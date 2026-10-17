@@ -6,12 +6,12 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Activity, BarChart3, Building2, CalendarDays, CircleDollarSign, CreditCard, LayoutDashboard, Package, Plus, ReceiptText, Users } from "lucide-react";
 import { DataTable, type DataColumn } from "@/components/data-table/DataTable";
-import { WorkspaceSidebar, type WorkspaceNavGroup } from "@/components/layout/WorkspaceSidebar";
+import type { WorkspaceNavGroup } from "@/components/layout/WorkspaceSidebar";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { SelectField } from "@/components/ui/select";
-import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { authApi, authQueryKeys } from "@/features/auth/api";
 import { createExpense, createExpenseCategory, getExpenseCategories, getExpenses, voidExpense, type ExpensePaymentMethod, type ExpenseRecord } from "@/features/expenses/api/expensesApi";
 import { getErrorMessage } from "@/lib/api-client";
@@ -64,7 +64,7 @@ export function ExpensesPage() {
   ];
   const submitAllowed = Boolean(form.branchId && form.categoryId && Number(form.amount) > 0 && form.description.trim().length >= 2);
   const pageError = profile.error ?? categories.error ?? expenses.error;
-  return <SidebarProvider><WorkspaceSidebar role={role} tenantName={membership?.tenant.name ?? "Workspace"} groups={navGroups} activePath={pathname} /><SidebarInset><header className="flex h-[72px] items-center gap-3 border-b px-4 sm:px-7"><SidebarTrigger /><div><p className="text-xs text-muted-foreground">Finance · {membership?.tenant.name ?? "Your workspace"}</p><h1 className="text-lg font-semibold">Expenses</h1></div></header><main className="mx-auto w-full max-w-[1440px] space-y-5 p-4 sm:p-7 xl:px-10">
+  return<> <SidebarInset><header className="flex h-[72px] items-center gap-3 border-b px-4 sm:px-7"><SidebarTrigger /><div><p className="text-xs text-muted-foreground">Finance · {membership?.tenant.name ?? "Your workspace"}</p><h1 className="text-lg font-semibold">Expenses</h1></div></header><main className="mx-auto w-full max-w-[1440px] space-y-5 p-4 sm:p-7 xl:px-10">
     <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><p className="text-sm text-muted-foreground">Record business costs and reconcile cash outflows.</p><p className="mt-1 text-xs text-muted-foreground">Operating profit is reported before income tax.</p></div><Button onClick={() => { setForm((current) => ({ ...current, branchId: branchId === "all" ? branches[0]?.id ?? "" : (branchId || branches[0]?.id || "") })); setAddOpen(true); }} disabled={!tenantId || !branches.length}><Plus className="size-4"/> Record expense</Button></div>
     {pageError ? <div role="alert" className="rounded-xl border border-destructive/25 bg-destructive/5 p-4 text-sm text-destructive">{getErrorMessage(pageError)}</div> : null}
     {!membership ? <div className="rounded-2xl border bg-card p-8 text-center text-sm text-muted-foreground">Choose a business workspace to view its expenses.</div> : !["OWNER", "MANAGER"].includes(role) ? <div role="alert" className="rounded-2xl border bg-card p-8 text-center text-sm text-muted-foreground">Your role does not have access to expense records.</div> : <>
@@ -85,7 +85,7 @@ export function ExpensesPage() {
     {createMutation.error || categoryMutation.error ? <p role="alert" className="sm:col-span-2 text-sm text-destructive">{getErrorMessage(createMutation.error ?? categoryMutation.error)}</p> : null}
   </div><DialogFooter><Button variant="outline" onClick={() => setAddOpen(false)} disabled={createMutation.isPending}>Cancel</Button><Button disabled={!submitAllowed || createMutation.isPending} onClick={() => createMutation.mutate()}>{createMutation.isPending ? "Saving…" : "Save expense"}</Button></DialogFooter></DialogContent></Dialog>
   <Dialog open={Boolean(voidTarget)} onOpenChange={(open) => { if (!open && !voidMutation.isPending) { setVoidTarget(null); setVoidReason(""); } }}><DialogContent><DialogHeader><DialogTitle>Void expense</DialogTitle><DialogDescription>This keeps an audit record. Any linked cash payout is reversed back into the shift ledger.</DialogDescription></DialogHeader><label className="grid gap-2 text-sm font-medium">Reason<Input value={voidReason} onChange={(event) => setVoidReason(event.target.value)} maxLength={500} placeholder="Explain why this is being voided" /></label>{voidMutation.error ? <p role="alert" className="text-sm text-destructive">{getErrorMessage(voidMutation.error)}</p> : null}<DialogFooter><Button variant="outline" onClick={() => setVoidTarget(null)}>Cancel</Button><Button variant="destructive" disabled={voidReason.trim().length < 3 || voidMutation.isPending} onClick={() => voidMutation.mutate()}>{voidMutation.isPending ? "Voiding…" : "Void expense"}</Button></DialogFooter></DialogContent></Dialog>
-  </SidebarProvider>;
+  </>;
 }
 
 function Field({ label, children }: { label: string; children: ReactNode }) { return <label className="grid min-w-0 gap-2 text-xs font-medium text-muted-foreground">{label}{children}</label>; }

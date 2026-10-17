@@ -4,13 +4,13 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Activity, Boxes, ChefHat, ClipboardList, Coffee, CreditCard, LayoutDashboard, Package, Plus, Save, Trash2, UtensilsCrossed } from "lucide-react";
-import { WorkspaceSidebar, type WorkspaceNavGroup } from "@/components/layout/WorkspaceSidebar";
+import type { WorkspaceNavGroup } from "@/components/layout/WorkspaceSidebar";
 import { WorkspaceSearch } from "@/components/layout/WorkspaceSearch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { SelectField } from "@/components/ui/select";
-import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { authApi, authQueryKeys } from "@/features/auth/api";
 import { getIngredients } from "@/features/inventory/api/inventoryApi";
@@ -89,8 +89,8 @@ export function ModifierManager() {
     assignmentMutation.mutate({ productId, groupIds });
   }
 
-  return <SidebarProvider>
-    <WorkspaceSidebar role={role} tenantName={tenantName} groups={navGroups} activePath={pathname} />
+  return<>
+
     <SidebarInset className="min-w-0">
       <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b bg-background/95 px-4 backdrop-blur sm:px-6"><div className="flex items-center gap-3"><SidebarTrigger /><span className="text-sm font-medium">Menu modifiers</span></div><div className="flex items-center gap-2"><WorkspaceSearch groups={navGroups} /><ThemeToggle /></div></header>
       <main className="mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
@@ -121,5 +121,5 @@ export function ModifierManager() {
         </div>}
       </main>
     </SidebarInset>
-  </SidebarProvider>;
+  </>;
 }

@@ -1,7 +1,6 @@
 import { Building2 } from "lucide-react";
-import { WorkspaceSidebar } from "@/components/layout/WorkspaceSidebar";
 import { Button } from "@/components/ui/button";
-import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { SidebarInset,  } from "@/components/ui/sidebar";
 import type { DashboardView } from "@/features/dashboard/api";
 import { AdminContent } from "@/features/dashboard/components/views/AdminContent";
 import { InventoryContent } from "@/features/dashboard/components/views/InventoryContent";
@@ -92,27 +91,9 @@ export function DashboardShell({ requestedView }: { requestedView?: DashboardVie
   const dashboard = dashboardQuery.data;
   const heading = roleTitles[role] ?? "Workspace";
 
-  return (
-    <SidebarProvider className="min-h-screen bg-[radial-gradient(ellipse_at_top_left,rgba(139,159,151,.12),transparent_35%),var(--background)] text-foreground">
-      <WorkspaceSidebar
-        role={role}
-        tenantName={dashboard.tenant?.name ?? "Novara Platform"}
-        groups={[{ label: "Workspace", items: visibleNav }]}
-        activePath={pathname}
-        brandHref={ROLE_HOME[role] ?? "/dashboard"}
-        treatUnspecifiedAsReady={false}
-        topContent={
-          <WorkspaceSwitcher
-            dashboard={dashboard}
-            role={role}
-            memberships={memberships}
-            activeTenantId={activeTenantId}
-            onSwitchTenant={switchTenant}
-            onSwitchBranch={switchBranch}
-          />
-        }
-        footer={<SidebarStatus />}
-      />
+  return (<>
+
+
       <SidebarInset>
         <div className="min-w-0 flex-1">
           <DashboardHeader
@@ -131,7 +112,7 @@ export function DashboardShell({ requestedView }: { requestedView?: DashboardVie
             {dashboard.view === "overview" ? (
               <OverviewContent dashboard={dashboard} role={role} />
             ) : dashboard.view === "pos" ? (
-              <PosContent key={`${dashboard.tenant?.id ?? "platform"}:${dashboard.activeBranch?.id ?? "default"}:${searchParams.get("tableId") ?? "walk-in"}`} dashboard={dashboard} role={role} actorId={loggedInUser?.id ?? "anonymous"} tableId={searchParams.get("tableId") ?? undefined} />
+              <PosContent key={`${dashboard.tenant?.id ?? "platform"}:${dashboard.activeBranch?.id ?? "default"}:${searchParams.get("tableId") ?? "walk-in"}:${searchParams.get("newOrder") ?? ""}`} dashboard={dashboard} role={role} actorId={loggedInUser?.id ?? "anonymous"} tableId={searchParams.get("tableId") ?? undefined} startNewOrder={searchParams.get("newOrder") === "1"} />
             ) : dashboard.view === "kitchen" ? (
               <KitchenContent dashboard={dashboard} />
             ) : dashboard.view === "inventory" ? (
@@ -143,6 +124,6 @@ export function DashboardShell({ requestedView }: { requestedView?: DashboardVie
           </main>
         </div>
       </SidebarInset>
-    </SidebarProvider>
-  );
+
+  </>);
 }

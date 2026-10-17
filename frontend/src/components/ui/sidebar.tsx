@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { createContext, useContext, useState, type ComponentProps, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, type ComponentProps, type ReactNode } from "react";
 import { PanelLeftClose } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -21,8 +21,19 @@ function useSidebar() {
 }
 
 export function SidebarProvider({ children, className }: { children: ReactNode; className?: string }) {
+  const parent = useContext(SidebarContext);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [desktopOpen, setDesktopOpen] = useState(true);
+  useEffect(() => {
+    if (parent) return;
+    const savedState = window.localStorage.getItem("novara-sidebar-open");
+    if (savedState !== null) setDesktopOpen(savedState === "true");
+  }, [parent]);
+  useEffect(() => {
+    if (parent) return;
+    window.localStorage.setItem("novara-sidebar-open", String(desktopOpen));
+  }, [desktopOpen, parent]);
+  if (parent) return <>{children}</>;
   return <SidebarContext.Provider value={{ mobileOpen, desktopOpen, setMobileOpen, setDesktopOpen }}><div data-slot="sidebar-provider" className={cn("flex min-h-screen w-full", className)}>{children}</div></SidebarContext.Provider>;
 }
 

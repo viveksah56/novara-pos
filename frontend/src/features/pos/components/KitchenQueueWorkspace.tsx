@@ -6,8 +6,7 @@ import { ChefHat, ClipboardList, LayoutDashboard, RefreshCw, Store } from "lucid
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { SelectField } from "@/components/ui/select";
-import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { WorkspaceSidebar } from "@/components/layout/WorkspaceSidebar";
+import { SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { authApi, authQueryKeys } from "@/features/auth/api";
 import { getKitchenQueue, updateKitchenItem, type KitchenTicket } from "@/features/pos/api/posApi";
 import { tenancyApi } from "@/features/tenancy/api/tenancyApi";
@@ -46,13 +45,11 @@ export function KitchenQueueWorkspace() {
   const groups = useMemo(() => query.data ?? [], [query.data]);
   const tenantName = membership?.tenant.name ?? "Kitchen workspace";
 
-  return <SidebarProvider><WorkspaceSidebar role={role} tenantName={tenantName} activePath="/kitchen" groups={[{ label: "Workspace", items: [
-    { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard }, { label: "Point of sale", href: "/pos", icon: Store, capability: "orders.create" }, { label: "Orders", href: "/orders", icon: ClipboardList, capability: "orders.read" }, { label: "Kitchen queue", href: "/kitchen", icon: ChefHat, capability: "kitchen.orders.read" },
-  ]}]} /><SidebarInset><header className="sticky top-0 z-20 flex h-[68px] items-center gap-3 border-b bg-background/90 px-4 backdrop-blur sm:px-7"><SidebarTrigger/><div className="min-w-0 flex-1"><p className="truncate text-xs text-muted-foreground">{tenantName}</p><h1 className="text-lg font-semibold">Kitchen queue</h1></div>{branchList.length > 1 ? <SelectField aria-label="Branch" value={branchId} onValueChange={(value) => router.push(`/kitchen?tenantId=${tenantId}&branchId=${value}`)} options={branchList.map((branch) => ({ value: branch.id, label: branch.name }))} triggerClassName="w-48"/> : null}<Button variant="outline" size="icon" aria-label="Refresh queue" onClick={() => void query.refetch()}><RefreshCw className="size-4"/></Button></header>
+  return<> <SidebarInset><header className="sticky top-0 z-20 flex h-[68px] items-center gap-3 border-b bg-background/90 px-4 backdrop-blur sm:px-7"><SidebarTrigger/><div className="min-w-0 flex-1"><p className="truncate text-xs text-muted-foreground">{tenantName}</p><h1 className="text-lg font-semibold">Kitchen queue</h1></div>{branchList.length > 1 ? <SelectField aria-label="Branch" value={branchId} onValueChange={(value) => router.push(`/kitchen?tenantId=${tenantId}&branchId=${value}`)} options={branchList.map((branch) => ({ value: branch.id, label: branch.name }))} triggerClassName="w-48"/> : null}<Button variant="outline" size="icon" aria-label="Refresh queue" onClick={() => void query.refetch()}><RefreshCw className="size-4"/></Button></header>
     <main className="mx-auto w-full max-w-[1600px] space-y-6 p-4 sm:p-7 xl:px-10"><div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-[.16em] text-primary">Live service</p><h2 className="mt-2 text-3xl font-semibold tracking-tight">Incoming tickets</h2><p className="mt-2 text-sm text-muted-foreground">Oldest tickets first · refreshes every five seconds while this screen is visible</p></div><span className="rounded-full border bg-card px-3 py-2 text-xs font-medium">{groups.length} active {groups.length === 1 ? "ticket" : "tickets"}</span></div>
       {query.isError ? <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-sm"><div><p className="font-medium">Connection issue</p><p className="mt-1 text-muted-foreground">{getErrorMessage(query.error)} The queue will retry automatically.</p></div><Button variant="outline" onClick={() => void query.refetch()}>Retry now</Button></div> : null}
       {query.isPending ? <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3" aria-busy="true">{Array.from({ length: 3 }, (_, index) => <div key={index} className="h-72 animate-pulse rounded-2xl bg-secondary/60"/>)}</div> : groups.length ? <div className="grid items-start gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">{groups.map((ticket) => <TicketCard key={ticket.orderId} ticket={ticket} now={now} pending={update.isPending} onTransition={(itemId, status) => update.mutate({ itemId, status })}/>)}</div> : <div className="rounded-2xl border border-dashed bg-card px-6 py-16 text-center"><ChefHat className="mx-auto size-9 text-muted-foreground"/><h3 className="mt-4 text-lg font-semibold">No active orders</h3><p className="mt-1 text-sm text-muted-foreground">New tickets will appear here when the service team sends items to the kitchen.</p></div>}
-    </main></SidebarInset></SidebarProvider>;
+    </main></SidebarInset></>;
 }
 
 function TicketCard({ ticket, now, pending, onTransition }: { ticket: KitchenTicket; now: number; pending: boolean; onTransition: (id: string, status: "PREPARING" | "READY") => void }) {

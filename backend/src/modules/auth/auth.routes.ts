@@ -13,6 +13,7 @@ const authRateLimit = rateLimit({
   // Keep production protection strict while allowing repeated role/account
   // switching during local development without locking out the shared demo IP.
   limit: env.isProd ? 12 : 120,
+  skipSuccessfulRequests: true,
   standardHeaders: "draft-8",
   legacyHeaders: false,
   handler: (request, response) => {
@@ -25,6 +26,7 @@ export const authRouter = Router();
 const credentialRateLimit = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: env.isProd ? 10 : 50,
+  skipSuccessfulRequests: true,
   standardHeaders: "draft-8",
   legacyHeaders: false,
   keyGenerator: (request) => {

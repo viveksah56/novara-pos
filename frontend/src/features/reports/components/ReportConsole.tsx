@@ -6,11 +6,10 @@ import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { Activity, BarChart3, Package, TrendingUp } from "lucide-react";
 import { DataTable, type DataColumn } from "@/components/data-table/DataTable";
-import { WorkspaceSidebar } from "@/components/layout/WorkspaceSidebar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SelectField } from "@/components/ui/select";
-import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { authApi, authQueryKeys } from "@/features/auth/api";
 import { getInventoryReport, getSalesReport, type InventoryReport, type SalesReport } from "@/features/reports/api/reportApi";
 import { getErrorMessage } from "@/lib/api-client";
@@ -64,7 +63,7 @@ export function ReportConsole({ kind }: Props) {
   const navGroups = [{ label: "Workspace", items: [{ label: "Overview", href: "/dashboard", icon: Activity, allowed: ["OWNER", "MANAGER"].includes(role) }, { label: "Inventory", href: "/inventory", icon: Package, allowed: ["OWNER", "MANAGER", "INVENTORY_MANAGER"].includes(role) }, { label: "Sales reports", href: "/reports", icon: BarChart3, allowed: ["OWNER", "MANAGER"].includes(role) }, { label: "Stock reports", href: "/stock-reports", icon: Package, allowed: ["OWNER", "MANAGER", "INVENTORY_MANAGER"].includes(role) }] }];
   const loading = kind === "sales" ? sales.isPending : inventory.isPending;
   const error = kind === "sales" ? sales.error : inventory.error;
-  return <SidebarProvider><WorkspaceSidebar role={role} tenantName={membership?.tenant.name ?? "Workspace"} activePath={kind === "sales" ? "/reports" : "/stock-reports"} groups={navGroups} /><SidebarInset><header className="flex h-[72px] items-center gap-3 border-b px-4 sm:px-7"><SidebarTrigger /><div><p className="text-xs text-muted-foreground">Business intelligence · {selectedBranch}</p><h1 className="text-lg font-semibold">{title}</h1></div></header><main className="mx-auto w-full max-w-[1440px] space-y-5 p-4 sm:p-7 xl:px-10">
+  return<> <SidebarInset><header className="flex h-[72px] items-center gap-3 border-b px-4 sm:px-7"><SidebarTrigger /><div><p className="text-xs text-muted-foreground">Business intelligence · {selectedBranch}</p><h1 className="text-lg font-semibold">{title}</h1></div></header><main className="mx-auto w-full max-w-[1440px] space-y-5 p-4 sm:p-7 xl:px-10">
     {!canRead ? <div className="rounded-2xl border bg-card p-6 text-sm text-muted-foreground">This role does not have access to {title.toLowerCase()}.</div> : <>
       <section className="flex flex-col gap-4 rounded-2xl border border-border/75 bg-card p-4 sm:flex-row sm:flex-wrap sm:items-end sm:p-5"><div className="min-w-56 flex-1"><label htmlFor="report-branch" className="mb-2 block text-xs font-medium text-muted-foreground">Branch</label><SelectField id="report-branch" value={activeBranchId} onValueChange={setBranchId} options={[...(role === "OWNER" ? [{ value: "all", label: "All branches" }] : []), ...branches.map((branch) => ({ value: branch.id, label: branch.name }))]} /></div>{kind === "sales" ? <><div><label htmlFor="report-from" className="mb-2 block text-xs font-medium text-muted-foreground">From</label><Input id="report-from" type="date" value={from} onChange={(event) => setFrom(event.target.value)} /></div><div><label htmlFor="report-to" className="mb-2 block text-xs font-medium text-muted-foreground">To</label><Input id="report-to" type="date" value={to} onChange={(event) => setTo(event.target.value)} /></div></> : null}<Button type="button" variant="outline" onClick={() => void (kind === "sales" ? sales.refetch() : inventory.refetch())}>Refresh</Button></section>
       {error ? <div role="alert" className="rounded-xl border border-destructive/25 bg-destructive/5 p-4 text-sm text-destructive">{getErrorMessage(error)}</div> : null}
@@ -77,7 +76,7 @@ export function ReportConsole({ kind }: Props) {
         <ReportTable title="Reorder attention" rows={stock.lowStock} columns={lowStockColumns} empty="All stock levels are above their reorder points."/><ReportTable title="Recent stock movements" rows={stock.movements} columns={movementColumns} empty="No stock movements have been recorded."/>
       </> : null}
     </>}
-  </main></SidebarInset></SidebarProvider>;
+  </main></SidebarInset></>;
 }
 function Metric({ title, value, icon: Icon }: { title: string; value: string; icon: typeof Activity }) { return <article className="rounded-2xl border border-border/75 bg-card p-5"><span className="grid size-10 place-items-center rounded-xl bg-secondary text-primary"><Icon className="size-5"/></span><p className="mt-4 text-xs text-muted-foreground">{title}</p><p className="mt-1 text-2xl font-semibold tabular-nums">{value}</p></article>; }
 function ReportTable<Row>({ title, rows, columns, empty }: { title: string; rows: Row[]; columns: DataColumn<Row>[]; empty: string }) { return <section className="rounded-2xl border border-border/75 bg-card p-4 sm:p-5"><h2 className="mb-4 font-semibold">{title}</h2><DataTable rows={rows} columns={columns} getRowId={(row, index) => String((row as Record<string, unknown>).id ?? index)} enableSearch searchPlaceholder={`Search ${title.toLowerCase()}…`} enableRowSelection={false} empty={<p className="py-10 text-center text-sm text-muted-foreground">{empty}</p>}/></section>; }

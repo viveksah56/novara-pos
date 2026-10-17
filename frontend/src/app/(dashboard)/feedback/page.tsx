@@ -9,8 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { SelectField, type SelectOption } from "@/components/ui/select";
-import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { WorkspaceSidebar } from "@/components/layout/WorkspaceSidebar";
+import { SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { authApi, authQueryKeys } from "@/features/auth/api";
 import { platformApi, platformKeys, type PlatformTicket } from "@/features/platform/api";
 import { ApiError, getErrorMessage } from "@/lib/api-client";
@@ -90,19 +89,9 @@ export default function FeedbackPage() {
     submit.mutate({ tenantId: selectedTenantId, type, subject, message });
   };
 
-  return (
-    <SidebarProvider>
-      <WorkspaceSidebar
-        role={currentRole}
-        tenantName="Help & support"
-        activePath="/feedback"
-        brandHref="/dashboard"
-        groups={[{ label: "Workspace", items: [
-          { label: "Back to workspace", href: "/dashboard", icon: ArrowLeft },
-          { label: "Complaints & feedback", href: "/feedback", icon: MessageSquareText },
-        ] }]}
-        footer={<div className="rounded-xl bg-sidebar-accent p-3 text-xs leading-5 text-muted-foreground">Your requests stay private to your account and the Novara support team.</div>}
-      />
+  return (<>
+
+
       <SidebarInset>
         <header className="sticky top-0 z-20 flex h-[72px] items-center gap-3 border-b border-border/70 bg-background/90 px-4 backdrop-blur sm:px-8">
           <SidebarTrigger />
@@ -148,8 +137,8 @@ export default function FeedbackPage() {
           </section> : null}
         </main>
       </SidebarInset>
-    </SidebarProvider>
-  );
+
+  </>);
 }
 
 function Field({ label, htmlFor, children }: { label: string; htmlFor: string; children: React.ReactNode }) { return <div className="space-y-2"><label htmlFor={htmlFor} className="block text-sm font-medium">{label}</label>{children}</div>; }

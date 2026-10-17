@@ -28,7 +28,7 @@ import {
   UtensilsCrossed,
   Trash2,
 } from "lucide-react";
-import { WorkspaceSidebar, type WorkspaceNavGroup } from "@/components/layout/WorkspaceSidebar";
+import type { WorkspaceNavGroup } from "@/components/layout/WorkspaceSidebar";
 import { WorkspaceSearch } from "@/components/layout/WorkspaceSearch";
 import { DataTable } from "@/components/data-table/DataTable";
 import { Button } from "@/components/ui/button";
@@ -39,7 +39,6 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { ActionDialog, type ActionModel } from "@/components/ui/alert-dialog";
 import {
   SidebarInset,
-  SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -801,16 +800,9 @@ export function OperationsConsolePage({
     const quantity = Number(receivingQuantities[String(item.id)] ?? 0);
     return quantity > 0 && quantity <= Math.max(0, Number(item.quantity) - Number(item.receivedQuantity ?? 0));
   });
-  return (
-    <SidebarProvider>
-      <WorkspaceSidebar
-        role={activeRole}
-        tenantName={activeMembership.tenant.name}
-        groups={navGroups}
-        activePath={pathname}
-        brandHref={activeRole === "INVENTORY_MANAGER" ? "/inventory" : activeRole === "KITCHEN_STAFF" ? "/kitchen" : "/dashboard"}
-        footer={sidebarFooter}
-      />
+  return (<>
+
+
       <SidebarInset>
         <header className="sticky top-0 z-30 flex h-[72px] items-center justify-between border-b border-border/60 bg-background/85 px-4 backdrop-blur-xl sm:px-7">
           <div className="flex items-center gap-3">
@@ -1006,6 +998,6 @@ export function OperationsConsolePage({
           error={deleteMutation.error ? getErrorMessage(deleteMutation.error) : undefined}
         />
       ) : null}
-    </SidebarProvider>
-  );
+
+  </>);
 }
