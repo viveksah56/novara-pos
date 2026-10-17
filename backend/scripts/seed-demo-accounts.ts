@@ -1,21 +1,15 @@
 import bcrypt from "bcryptjs";
 import { env } from "@config/env.js";
 import { prisma } from "@lib/prisma.js";
+import { userSeedData } from "../prisma/data/user-seed-data.js";
 
 const demoPassword = process.env.DEMO_PASSWORD;
 
 const demoTenantId = "00000000-0000-4000-8000-000000000101";
 const demoBranchId = "00000000-0000-4000-8000-000000000102";
 
-const demoAccounts = [
-  { id: "00000000-0000-4000-8000-000000000201", name: "Novara Demo Owner", email: "owner@novara.test", role: "OWNER" },
-  { id: "00000000-0000-4000-8000-000000000202", name: "Novara Demo Manager", email: "manager@novara.test", role: "MANAGER" },
-  { id: "00000000-0000-4000-8000-000000000203", name: "Novara Demo Cashier", email: "cashier@novara.test", role: "CASHIER" },
-  { id: "00000000-0000-4000-8000-000000000204", name: "Novara Demo Waiter", email: "waiter@novara.test", role: "WAITER" },
-  { id: "00000000-0000-4000-8000-000000000205", name: "Novara Demo Kitchen", email: "kitchen@novara.test", role: "KITCHEN_STAFF" },
-  { id: "00000000-0000-4000-8000-000000000206", name: "Novara Demo Inventory", email: "inventory@novara.test", role: "INVENTORY_MANAGER" },
-] as const;
-const demoSuperAdmin = { id: "00000000-0000-4000-8000-000000000207", name: "Novara Demo Super Admin", email: "admin@novara.test" };
+const businessAccounts = userSeedData.filter((account) => account.scope === "BUSINESS");
+const platformAccounts = userSeedData.filter((account) => account.scope === "PLATFORM");
 
 async function seedDemoAccounts(): Promise<void> {
   const databaseHost = new URL(env.DATABASE_URL).hostname;
@@ -26,7 +20,7 @@ async function seedDemoAccounts(): Promise<void> {
     throw new Error("Set DEMO_PASSWORD in backend/.env.local to at least 12 characters.");
   }
 
-  const accountIdsByEmail = new Map<string, string>([...demoAccounts.map(({ email, id }) => [email, id] as const), [demoSuperAdmin.email, demoSuperAdmin.id] as const]);
+  const accountIdsByEmail = new Map<string, string>(userSeedData.map(({ email, id }) => [email, id] as const));
   const existingAccounts = await prisma.user.findMany({
     where: { email: { in: [...accountIdsByEmail.keys()] } },
     select: { id: true, email: true },
@@ -51,7 +45,7 @@ async function seedDemoAccounts(): Promise<void> {
       update: { tenantId: demoTenantId, name: "Demo Branch", timezone: "Asia/Kathmandu" },
     });
 
-    for (const account of demoAccounts) {
+    for (const account of businessAccounts) {
       const user = await transaction.user.upsert({
         where: { id: account.id },
         create: { id: account.id, name: account.name, email: account.email, passwordHash },
@@ -74,20 +68,22 @@ async function seedDemoAccounts(): Promise<void> {
       }
     }
 
-    const platformAdmin = await transaction.user.upsert({
-      where: { id: demoSuperAdmin.id },
-      create: { id: demoSuperAdmin.id, name: demoSuperAdmin.name, email: demoSuperAdmin.email, passwordHash },
-      update: { name: demoSuperAdmin.name, email: demoSuperAdmin.email, passwordHash, isActive: true },
-      select: { id: true },
-    });
-    await transaction.platformStaff.upsert({
-      where: { userId: platformAdmin.id },
-      create: { userId: platformAdmin.id, role: "SUPER_ADMIN" },
-      update: { role: "SUPER_ADMIN" },
-    });
+    for (const account of platformAccounts) {
+      const user = await transaction.user.upsert({
+        where: { id: account.id },
+        create: { id: account.id, name: account.name, email: account.email, passwordHash },
+        update: { name: account.name, email: account.email, passwordHash, isActive: true },
+        select: { id: true },
+      });
+      await transaction.platformStaff.upsert({
+        where: { userId: user.id },
+        create: { userId: user.id, role: account.role },
+        update: { role: account.role },
+      });
+    }
   });
 
-  console.info(`Seeded ${demoAccounts.length} Novara demo business accounts and one platform Super Admin in the local development database.`);
+  console.info(`Seeded ${userSeedData.length} Novara demo accounts across all business and platform roles in the local development database.`);
 }
 
 try {
