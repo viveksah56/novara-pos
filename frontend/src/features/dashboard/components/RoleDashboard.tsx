@@ -154,7 +154,7 @@ const navigation: Record<string, NavItem[]> = {
       icon: MessageSquareText,
       ready: true,
     },
-    { label: "Audit log", href: "/audit-log", icon: ShieldCheck },
+    { label: "Audit log", href: "/audit-log", icon: ShieldCheck, ready: false },
   ],
   MANAGER: [
     {
@@ -461,6 +461,13 @@ function OverviewContent({
   const tenantId = dashboard.tenant?.id ?? "";
   const branchId = dashboard.activeBranch?.id;
   const branchTimezone = dashboard.activeBranch?.timezone;
+  const [clockNow, setClockNow] = useState(0);
+  useEffect(() => {
+    const updateClock = () => setClockNow(Date.now());
+    updateClock();
+    const timer = window.setInterval(updateClock, 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
   const today = new Date();
   const from = new Date(today);
   from.setDate(today.getDate() - 6);
@@ -486,14 +493,6 @@ function OverviewContent({
     queryFn: () => getInventoryReport(tenantId, branchId),
     enabled: Boolean(tenantId && dashboard.permissions?.inventoryRead),
     staleTime: 30_000,
-    refetchInterval: () => typeof document !== "undefined" && document.visibilityState === "visible" ? 30_000 : false,
-    retry: false,
-  });
-  const orders = useQuery({
-    queryKey: ["pos-orders", tenantId, branchId, "dashboard-overview"],
-    queryFn: () => listPosOrders(tenantId, branchId),
-    enabled: Boolean(tenantId),
-    staleTime: 15_000,
     refetchInterval: () => typeof document !== "undefined" && document.visibilityState === "visible" ? 30_000 : false,
     retry: false,
   });
@@ -524,14 +523,8 @@ function OverviewContent({
   const changePercent = yesterdaySales && yesterdaySales !== 0 ? ((todaySales - yesterdaySales) / Math.abs(yesterdaySales)) * 100 : null;
   const lowStockRows = inventory.data?.lowStock ?? [];
   const chartMaximum = Math.max(1, ...daily.map((item) => item.sales));
-  const openOrders = (orders.data ?? []).filter((order) => order.status === "OPEN").slice(0, 5);
-  const hourlySales = Array.from({ length: 24 }, (_, hour) => ({ hour, sales: 0, orders: 0 }));
-  for (const order of orders.data ?? []) {
-    if (!order.completedAt || dateKey(new Date(order.completedAt), branchTimezone) !== todayKey) continue;
-    const hour = Number(new Intl.DateTimeFormat("en", { timeZone: branchTimezone, hour: "2-digit", hourCycle: "h23" }).format(new Date(order.completedAt)));
-    const slot = hourlySales[hour];
-    if (slot) { slot.orders += 1; slot.sales += Number(order.totalAmount); }
-  }
+  const openOrders = dashboard.openOrderQueue ?? [];
+  const hourlySales = dashboard.hourlySales ?? Array.from({ length: 24 }, (_, hour) => ({ hour, sales: 0, orders: 0 }));
   const hourlyMaximum = Math.max(1, ...hourlySales.map((item) => item.sales));
   return (
     <>
@@ -617,8 +610,8 @@ function OverviewContent({
         <article className="rounded-2xl border border-border/75 bg-card p-5 sm:p-6"><div className="flex items-center justify-between gap-3"><div><p className="text-sm text-muted-foreground">Product performance</p><h2 className="mt-1 text-xl font-semibold">Best sellers</h2></div><Utensils className="size-5 text-primary"/></div>{report.isPending ? <LoadingRowsDashboard/> : report.isError ? <p className="mt-4 text-sm text-muted-foreground">Best sellers are unavailable.</p> : report.data?.bestSellers.length ? <div className="mt-4 divide-y divide-border/70">{report.data.bestSellers.slice(0, 5).map((product, index) => <div key={product.id} className="flex items-center gap-3 py-3"><span className="grid size-8 shrink-0 place-items-center rounded-lg bg-secondary text-xs font-semibold">{index + 1}</span><span className="min-w-0 flex-1 truncate text-sm font-medium">{product.name}</span><span className="text-right text-xs text-muted-foreground">{product.quantity} sold<br/><strong className="text-foreground">{formatMoney(product.sales, currency)}</strong></span></div>)}</div> : <p className="mt-5 rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">No product sales in the selected period.</p>}</article>
         {role === "OWNER" && (dashboard.branches?.length ?? 0) > 1 ? <article className="rounded-2xl border border-border/75 bg-card p-5 sm:p-6"><div className="flex items-center justify-between gap-3"><div><p className="text-sm text-muted-foreground">Branch performance</p><h2 className="mt-1 text-xl font-semibold">Branch comparison</h2></div><Building2 className="size-5 text-primary"/></div><div className="mt-4 divide-y divide-border/70">{dashboard.branches?.map((branch, index) => { const query = branchReports[index]; return <div key={branch.id} className="flex items-center justify-between gap-4 py-3"><span className="truncate text-sm font-medium">{branch.name}</span><span className="text-sm font-semibold tabular-nums">{query?.isPending ? "Loading…" : query?.isError ? "Unavailable" : formatMoney(query?.data?.summary.netSales ?? 0, currency)}</span></div>; })}</div></article> : null}
       </section>
-      {role === "MANAGER" ? <section className="mt-5 grid gap-5 xl:grid-cols-2"><article className="rounded-2xl border border-border/75 bg-card p-5 sm:p-6"><div><p className="text-sm text-muted-foreground">Staffing signal</p><h2 className="mt-1 text-xl font-semibold">Hourly sales today</h2></div>{orders.isError ? <p className="mt-4 text-sm text-destructive">{getErrorMessage(orders.error)}</p> : orders.isPending ? <div className="mt-5 h-40 animate-pulse rounded-xl bg-secondary/60" aria-busy="true"/> : <div className="mt-5 grid h-40 items-end gap-1" style={{ gridTemplateColumns: "repeat(24,minmax(0,1fr))" }} aria-label="Hourly sales today">{hourlySales.map((slot) => <div key={slot.hour} className="flex h-full min-w-0 flex-col items-center justify-end gap-1"><span title={`${slot.orders} orders · ${formatMoney(slot.sales, currency)}`} className="w-full rounded-t bg-primary/75" style={{ height: `${slot.sales > 0 ? Math.max(5, slot.sales / hourlyMaximum * 100) : 2}%` }}/><span className="text-[8px] text-muted-foreground">{slot.hour % 3 === 0 ? String(slot.hour).padStart(2, "0") : ""}</span></div>)}</div>}<p className="mt-3 text-xs text-muted-foreground">{branchTimezone ? `Times shown in ${branchTimezone}.` : "Times use your local timezone when all branches are selected."}</p></article><article className="rounded-2xl border border-border/75 bg-card p-5 sm:p-6"><div className="flex items-center justify-between gap-3"><div><p className="text-sm text-muted-foreground">Service queue</p><h2 className="mt-1 text-xl font-semibold">Open orders</h2></div><span className="rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-semibold">{metrics.openOrders ?? 0}</span></div>{orders.isError ? <p className="mt-4 text-sm text-destructive">{getErrorMessage(orders.error)}</p> : openOrders.length ? <div className="mt-4 divide-y divide-border/70">{openOrders.map((order) => { const ageMinutes = Math.max(0, Math.floor((Date.now() - new Date(order.createdAt).getTime()) / 60_000)); return <div key={order.id} className="flex items-center justify-between gap-3 py-3"><div><p className="text-sm font-semibold">{order.table ? `Table ${order.table.name}` : `Order #${order.id.slice(-6).toUpperCase()}`}</p><p className="mt-1 text-xs text-muted-foreground">{ageMinutes} min · {order.createdBy.name}</p></div><span className="text-sm font-semibold">{formatMoney(order.totalAmount, currency)}</span></div>; })}</div> : !orders.isPending ? <p className="mt-5 text-sm text-muted-foreground">No open orders.</p> : <LoadingRowsDashboard/>}</article></section> : null}
-      {role === "MANAGER" ? <section className="mt-5 rounded-2xl border border-border/75 bg-card p-5 sm:p-6"><div className="flex items-center justify-between gap-3"><div><p className="text-sm text-muted-foreground">Order review</p><h2 className="mt-1 text-xl font-semibold">Refund and void activity</h2></div><CircleAlert className="size-5 text-primary"/></div><p className="mt-2 text-xs text-muted-foreground">Refunds and cancellations are recorded immediately in the current workflow; this list highlights recent activity for branch review.</p>{orders.isError ? <p role="alert" className="mt-4 text-sm text-destructive">{getErrorMessage(orders.error)}</p> : orders.isPending ? <LoadingRowsDashboard/> : (orders.data ?? []).filter((order) => ["PARTIALLY_REFUNDED", "REFUNDED", "CANCELLED"].includes(order.status)).slice(0, 5).length ? <div className="mt-3 divide-y divide-border/70">{(orders.data ?? []).filter((order) => ["PARTIALLY_REFUNDED", "REFUNDED", "CANCELLED"].includes(order.status)).slice(0, 5).map((order) => <div key={order.id} className="flex flex-wrap items-center justify-between gap-3 py-3"><span className="text-sm font-medium">{order.table ? `Table ${order.table.name}` : `Order #${order.id.slice(-6).toUpperCase()}`} · {order.status.replaceAll("_", " ")}</span><span className="text-xs text-muted-foreground">{new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(new Date(order.createdAt))}</span></div>)}</div> : <p className="mt-4 text-sm text-muted-foreground">No recent refunds or voids in the latest branch orders.</p>}</section> : null}
+      {role === "MANAGER" ? <section className="mt-5 grid gap-5 xl:grid-cols-2"><article className="rounded-2xl border border-border/75 bg-card p-5 sm:p-6"><div><p className="text-sm text-muted-foreground">Staffing signal</p><h2 className="mt-1 text-xl font-semibold">Hourly sales today</h2></div><div className="mt-5 grid h-40 items-end gap-1" style={{ gridTemplateColumns: "repeat(24,minmax(0,1fr))" }} aria-label="Hourly sales today">{hourlySales.map((slot) => <div key={slot.hour} className="flex h-full min-w-0 flex-col items-center justify-end gap-1"><span title={`${slot.orders} orders · ${formatMoney(slot.sales, currency)}`} className="w-full rounded-t bg-primary/75" style={{ height: `${slot.sales > 0 ? Math.max(5, slot.sales / hourlyMaximum * 100) : 2}%` }}/><span className="text-[8px] text-muted-foreground">{slot.hour % 3 === 0 ? String(slot.hour).padStart(2, "0") : ""}</span></div>)}</div><p className="mt-3 text-xs text-muted-foreground">{branchTimezone ? `Times shown in ${branchTimezone}.` : "Times use each assigned branch’s local timezone."}</p></article><article className="rounded-2xl border border-border/75 bg-card p-5 sm:p-6"><div className="flex items-center justify-between gap-3"><div><p className="text-sm text-muted-foreground">Service queue</p><h2 className="mt-1 text-xl font-semibold">Open orders</h2></div><span className="rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-semibold">{metrics.openOrders ?? 0}</span></div>{openOrders.length ? <div className="mt-4 divide-y divide-border/70">{openOrders.map((order) => { const ageMinutes = Math.max(0, Math.floor((clockNow - new Date(order.createdAt).getTime()) / 60_000)); return <div key={order.id} className="flex items-center justify-between gap-3 py-3"><div><p className="text-sm font-semibold">{order.table ? `Table ${order.table.name}` : `Order #${order.id.slice(-6).toUpperCase()}`}</p><p className="mt-1 text-xs text-muted-foreground">{ageMinutes} min · {order.createdBy.name}</p></div><span className="text-sm font-semibold">{formatMoney(Number(order.totalAmount), currency)}</span></div>; })}</div> : <p className="mt-5 text-sm text-muted-foreground">No open orders.</p>}</article></section> : null}
+      {role === "MANAGER" ? <section className="mt-5 rounded-2xl border border-border/75 bg-card p-5 sm:p-6"><div className="flex items-center justify-between gap-3"><div><p className="text-sm text-muted-foreground">Order review</p><h2 className="mt-1 text-xl font-semibold">Refund and void activity</h2></div><CircleAlert className="size-5 text-primary"/></div><p className="mt-2 text-xs text-muted-foreground">Recent refunds and cancellations in your assigned branches.</p>{(dashboard.reviewOrders ?? []).length ? <div className="mt-3 divide-y divide-border/70">{dashboard.reviewOrders?.map((order) => <div key={order.id} className="flex flex-wrap items-center justify-between gap-3 py-3"><span className="text-sm font-medium">{order.table ? `Table ${order.table.name}` : `Order #${order.id.slice(-6).toUpperCase()}`} · {order.status.replaceAll("_", " ")}</span><span className="text-xs text-muted-foreground">{new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(new Date(order.createdAt))}</span></div>)}</div> : <p className="mt-4 text-sm text-muted-foreground">No recent refunds or voids.</p>}</section> : null}
       {lowStockRows.length ? <section className="mt-5 rounded-2xl border border-amber-500/25 bg-amber-500/[.035] p-5"><div className="flex items-center gap-3"><AlertTriangle className="size-5 text-amber-600"/><div><h2 className="font-semibold">Low stock attention</h2><p className="text-sm text-muted-foreground">{lowStockRows.slice(0, 4).map((row) => `${row.ingredient.name} (${row.quantity} ${row.ingredient.unit})`).join(" · ")}</p></div></div></section> : null}
       {dashboard.shiftAlerts?.length ? <section className="mt-5 rounded-2xl border border-amber-500/25 bg-card p-5"><div className="flex items-center gap-3"><AlertTriangle className="size-5 text-amber-600"/><div><h2 className="font-semibold">Cash variances to review</h2><p className="text-sm text-muted-foreground">Recent closed shifts with a recorded drawer difference.</p></div></div><div className="mt-4 divide-y divide-border/70">{dashboard.shiftAlerts.slice(0, 5).map((shift) => <div key={shift.id} className="flex flex-wrap items-center justify-between gap-3 py-3"><span className="text-sm">{shift.user.name} · {shift.branch.name}{shift.closedAt ? ` · ${new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(shift.closedAt))}` : ""}</span><span className="text-sm font-semibold tabular-nums">{formatMoney(shift.cashVariance, currency)}</span></div>)}</div></section> : null}
       {role === "OWNER" ? <section className="mt-5 grid gap-5 xl:grid-cols-2"><article className="rounded-2xl border border-border/75 bg-card p-5 sm:p-6"><div className="flex items-center justify-between gap-3"><div><p className="text-sm text-muted-foreground">Last 7 days</p><h2 className="mt-1 text-xl font-semibold">Payment mix</h2></div><CircleDollarSign className="size-5 text-primary"/></div>{report.isPending ? <LoadingRowsDashboard/> : report.isError ? <p className="mt-4 text-sm text-destructive">Payment summary unavailable.</p> : report.data?.paymentBreakdown.length ? <div className="mt-4 space-y-4">{report.data.paymentBreakdown.map((payment) => { const total = report.data!.paymentBreakdown.reduce((sum, item) => sum + item.amount, 0); const percent = total > 0 ? payment.amount / total * 100 : 0; return <div key={payment.method}><div className="mb-1.5 flex items-center justify-between gap-3 text-sm"><span>{payment.method.toLowerCase().replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase())}</span><span className="font-medium tabular-nums">{formatMoney(payment.amount, currency)} · {percent.toFixed(1)}%</span></div><div className="h-2 overflow-hidden rounded-full bg-secondary"><div className="h-full rounded-full bg-primary" style={{ width: `${percent}%` }}/></div></div>; })}</div> : <p className="mt-5 rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">Payments will appear after completed sales.</p>}</article><article className="rounded-2xl border border-border/75 bg-card p-5 sm:p-6"><div className="flex items-center justify-between gap-3"><div><p className="text-sm text-muted-foreground">Business setup</p><h2 className="mt-1 text-xl font-semibold">Workspace readiness</h2></div><Settings2 className="size-5 text-primary"/></div><div className="mt-4 space-y-3"><HealthRow label="Products without recipes" value={String(dashboard.setup?.unrecipeProducts ?? 0)}/><HealthRow label="Subscription plan" value={dashboard.setup?.planName ?? "No plan selected"}/><HealthRow label="Branch usage" value={`${dashboard.setup?.branchUsage ?? 0}${dashboard.setup?.branchLimit ? ` / ${dashboard.setup.branchLimit}` : ""}`}/><HealthRow label="Team usage" value={`${dashboard.setup?.staffUsage ?? 0}${dashboard.setup?.staffLimit ? ` / ${dashboard.setup.staffLimit}` : ""}`}/>{dashboard.setup?.trialDaysRemaining !== null && dashboard.setup?.trialDaysRemaining !== undefined ? <HealthRow label="Trial days remaining" value={String(dashboard.setup.trialDaysRemaining)}/> : null}</div></article></section> : null}
@@ -632,8 +625,6 @@ function dateKey(date: Date, timeZone?: string) {
   return `${values.year}-${values.month}-${values.day}`;
 }
 function LoadingRowsDashboard() { return <div className="mt-4 space-y-3" aria-busy="true">{Array.from({ length: 4 }, (_, index) => <div key={index} className="h-12 animate-pulse rounded-lg bg-secondary/60"/>)}<span className="sr-only">Loading report data…</span></div>; }
-function SetupNudge({ title, description }: { title: string; description: string }) { return <article className="rounded-xl border border-border/75 bg-card p-4"><p className="text-sm font-semibold">{title}</p><p className="mt-1.5 text-xs leading-5 text-muted-foreground">{description}</p></article>; }
-
 function HealthRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between border-b border-border/70 pb-3 text-sm last:border-0">
@@ -666,6 +657,7 @@ function PosContent({
   const [error, setError] = useState("");
   const [cashReceived, setCashReceived] = useState("");
   const [receipt, setReceipt] = useState<{ id: string; items: Array<{ name: string; quantity: number; unitPrice: number }>; total: number } | null>(null);
+  const [receiptPrintCount, setReceiptPrintCount] = useState(0);
   const [paymentTarget, setPaymentTarget] = useState<PosOrderRecord | null>(null);
   const queueKey = `novara:offline-orders:${tenantId}:${actorId}`;
   const offlineQueue = useOfflineOrderQueue(queueKey);
@@ -764,6 +756,7 @@ function PosContent({
     mutationFn: () => completePosOrder(tenantId, currentOpenOrderId ?? "", { method: "CASH", cashReceived: Number(cashReceived || cartTotal) }),
     onSuccess: async (order) => {
       setReceipt({ id: order.id, items: cart.map((line) => ({ name: cartProduct(line.productId)?.name ?? "Item", quantity: line.quantity, unitPrice: lineUnitPrice(line) })), total: cartTotal });
+      setReceiptPrintCount(0);
       setOpenOrderId(null);
       setCart([]);
       setCashReceived("");
@@ -906,12 +899,12 @@ function PosContent({
           {role === "WAITER" && !tableId ? <Button className="mt-5 w-full" render={<Link href={`/tables?tenantId=${tenantId}&branchId=${branchId}`} />} disabled={!branchId}>Choose a table to start</Button> : <Button className="mt-5 w-full" disabled={!branchId || !cart.length || pending || Boolean(tableId && (tableQuery.isPending || tableQuery.isError || !selectedTable)) || Boolean(currentOpenOrderId && !(role === "WAITER" && tableId))} onClick={() => { setError(""); if (!navigator.onLine) { createOrderMutation.mutate(crypto.randomUUID()); return; } createOrderMutation.mutate(crypto.randomUUID()); }}>{createOrderMutation.isPending ? "Saving order…" : tableId && currentOpenOrderId ? "Add items to order" : tableId ? "Save table order" : online ? "Save order" : "Queue order offline"}</Button>}
           {currentOpenOrderId && role === "WAITER" ? <Button className="mt-2 w-full" variant="secondary" disabled={pending} onClick={() => { setError(""); sendKitchenMutation.mutate(); }}>{sendKitchenMutation.isPending ? "Sending ticket…" : "Send to kitchen"}</Button> : null}
           {currentOpenOrderId && role !== "WAITER" ? <Button className="mt-2 w-full" variant="secondary" disabled={pending || (role === "CASHIER" && (!cashierShift.data || cashierShift.isError))} onClick={() => { setError(""); completeOrderMutation.mutate(); }}>{completeOrderMutation.isPending ? "Completing…" : "Take cash & complete order"}</Button> : null}
-          {receipt ? <Button type="button" className="mt-2 w-full" variant="outline" onClick={() => window.print()}>Print receipt</Button> : null}
+          {receipt ? <Button type="button" className="mt-2 w-full" variant="outline" onClick={() => { setReceiptPrintCount((count) => count + 1); window.print(); }}>{receiptPrintCount ? "Reprint receipt" : "Print receipt"}</Button> : null}
           {!branchId ? <p className="mt-3 text-xs text-destructive">Your account needs an assigned branch before it can create an order.</p> : null}
           <div className="mt-6 space-y-3 border-t border-border pt-5"><HealthRow label="Network sync" value={!online ? "Offline · queued" : offlineQueue.length ? `${offlineQueue.length} order(s) syncing` : "Online"} /><HealthRow label="Branch" value={dashboard.activeBranch?.name ?? "—"} /></div>
         </aside>
       </section> : null}
-      {receipt ? <article id="novara-pos-receipt" className="sr-only"><h1>Novara · {dashboard.tenant?.name}</h1><p>{dashboard.activeBranch?.name}</p><p>Receipt #{receipt.id.slice(-6).toUpperCase()}</p><p>{new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(new Date())}</p><hr/>{receipt.items.map((item, index) => <p key={`${item.name}-${index}`}>{item.quantity} × {item.name} — {formatMoney(item.unitPrice * item.quantity, currency)}</p>)}<hr/><strong>Total · {formatMoney(receipt.total, currency)}</strong><p>Thank you for visiting.</p></article> : null}
+      {receipt ? <article id="novara-pos-receipt" className="sr-only"><h1>Novara · {dashboard.tenant?.name}</h1>{receiptPrintCount > 1 ? <p className="receipt-duplicate">DUPLICATE</p> : null}<p>{dashboard.activeBranch?.name}</p><p>Receipt #{receipt.id.slice(-6).toUpperCase()}</p><p>{new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(new Date())}</p><hr/>{receipt.items.map((item, index) => <p key={`${item.name}-${index}`}>{item.quantity} × {item.name} — {formatMoney(item.unitPrice * item.quantity, currency)}</p>)}<hr/><strong>Total · {formatMoney(receipt.total, currency)}</strong><p>Thank you for visiting.</p></article> : null}
       {paymentTarget ? <CompletePaymentDialog key={paymentTarget.id} order={paymentTarget} currency={currency} open pending={waiterPaymentMutation.isPending} error={waiterPaymentMutation.error ? getErrorMessage(waiterPaymentMutation.error) : undefined} requireReference onClose={() => { if (!waiterPaymentMutation.isPending) setPaymentTarget(null); }} onSubmit={(payment) => waiterPaymentMutation.mutate({ orderId: paymentTarget.id, payment })} /> : null}
       {role !== "WAITER" ? <section className="mt-5 overflow-hidden rounded-2xl border border-border/75 bg-card p-4 shadow-sm sm:p-6">
         <div className="mb-4 flex flex-wrap items-end justify-between gap-3"><div><p className="text-sm text-muted-foreground">Service activity</p><h2 className="mt-1 text-lg font-semibold">Recent orders</h2></div><span className="rounded-full bg-secondary px-3 py-1.5 text-xs font-medium">{ordersQuery.data?.length ?? 0} in this branch</span></div>
@@ -1280,14 +1273,9 @@ function RoleDashboardContent({
     </div>
   );
   const sidebarFooter = (
-      <div className="rounded-xl bg-secondary/80 p-3.5">
-        <div className="flex items-center gap-2">
-          <span className="size-2 rounded-full bg-emerald-500" />
-          <span className="text-xs font-medium">All systems operational</span>
-        </div>
-        <p className="mt-2 text-xs leading-5 text-muted-foreground">
-          Your workspace is up to date.
-        </p>
+      <div className="flex items-center gap-3 rounded-xl border border-emerald-500/15 bg-emerald-500/[.06] px-3 py-2.5">
+        <span className="relative grid size-2 shrink-0 place-items-center"><span className="absolute size-2 animate-ping rounded-full bg-emerald-500/40"/><span className="relative size-1.5 rounded-full bg-emerald-500"/></span>
+        <div className="min-w-0"><p className="truncate text-xs font-medium">Workspace operational</p><p className="mt-0.5 truncate text-[10px] text-muted-foreground">Services are running normally</p></div>
       </div>
   );
 

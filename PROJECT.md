@@ -81,7 +81,7 @@ Roles are assigned per tenant membership except platform roles, which live in `P
 | `OWNER` | `/dashboard` | Business-wide view, branches, menu, products, inventory, purchasing, staff, sales/inventory reports, profit when costs are complete, subscriptions and shifts |
 | `MANAGER` | `/dashboard` | Branch-scoped operations, orders, menu, inventory, purchasing, staff views, shifts and sales reports; profit is hidden |
 | `CASHIER` | `/pos` | Create/view orders, cash checkout and own shift operations |
-| `WAITER` | `/pos` | Create orders and view order workspace; no cash shift management |
+| `WAITER` | `/tables` | Manage table service, create orders, track ready items; no cash shift management |
 | `KITCHEN_STAFF` | `/kitchen` | Read active kitchen tickets and advance them through preparation/ready |
 | `INVENTORY_MANAGER` | `/inventory` | Ingredient, stock, supplier, purchase and inventory-report operations |
 | `SUPER_ADMIN` | `/admin` | Platform businesses, plans, system health, support staff and global search |

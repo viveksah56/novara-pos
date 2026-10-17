@@ -31,7 +31,7 @@ Indexes: RefreshToken (userId), (familyId). PasswordResetToken (userId).
 
 ### Password hashing
 
-Argon2id with memoryCost 19456, timeCost 2, parallelism 1. A fixed dummy hash is verified when the email is unknown so response time stays similar.
+Passwords are hashed with `bcryptjs` using 12 rounds. A fixed dummy hash is verified when the email is unknown so response time stays similar. Access and refresh signing keys are independently derived from `JWT_SECRET` using purpose-specific HMAC-SHA256 keys.
 
 ### Register
 
@@ -118,7 +118,7 @@ Requires the current password. Sets the new hash and revokes all other families.
 
 ### CSRF
 
-Mutating requests require header `X-Requested-With`, and the `Origin` header must match APP_ORIGIN.
+Mutating requests require `X-Requested-With: XMLHttpRequest`, and the `Origin` header must exactly match one of the configured `CORS_ORIGIN` values.
 
 ## Frontend logic
 
@@ -145,7 +145,7 @@ React Hook Form with the same Zod rules. Shows a password toggle, disables the b
 ### Redirect
 
 ```ts
-const next = searchParams.get("next");
+const next = searchParams.get("returnTo");
 const safe = next && next.startsWith("/") && !next.startsWith("//") ? next : null;
 router.replace(safe ?? session.homeRoute);
 ```

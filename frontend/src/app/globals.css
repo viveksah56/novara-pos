@@ -183,12 +183,18 @@ select:not([data-control-layout="overlay"]) {
   #novara-pos-receipt {
     position: absolute;
     inset: 0 auto auto 0;
-    width: 72mm;
-    padding: 8mm;
+    box-sizing: border-box;
+    width: 80mm;
+    padding: 4mm;
     color: #111;
     background: white;
     font: 12px/1.5 ui-monospace, monospace;
   }
+  #novara-pos-receipt .receipt-duplicate { margin: 0 0 3mm; text-align: center; font-weight: 800; letter-spacing: .12em; }
+}
+
+:is([data-slot="sidebar-inset"] > header, [data-slot="sidebar-inset"] > div > header) {
+  padding-right: 4.5rem !important;
 }
 
 @layer base {

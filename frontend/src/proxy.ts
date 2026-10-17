@@ -88,6 +88,20 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
 
   const role = getMembershipRole(profile, request.nextUrl.searchParams.get("tenantId"));
   const capability = capabilityForPath(pathname);
+  const platformRoles = new Set<PlatformRole>(["SUPER_ADMIN", "PLATFORM_ADMIN", "SUPPORT_AGENT"]);
+  const isAdminRoute = pathname === "/admin" || pathname.startsWith("/admin/");
+  if (isAdminRoute && (!role || !platformRoles.has(role as PlatformRole))) {
+    return NextResponse.redirect(new URL("/unauthorized", request.url));
+  }
+  if (!isAdminRoute && pathname !== "/change-password" && role && platformRoles.has(role as PlatformRole)) {
+    return NextResponse.redirect(new URL(role === "SUPPORT_AGENT" ? "/admin/support" : "/admin", request.url));
+  }
+  if (pathname === "/dashboard" && role !== "OWNER" && role !== "MANAGER") {
+    return NextResponse.redirect(new URL("/unauthorized", request.url));
+  }
+  if (role === "SUPPORT_AGENT" && !["/admin/support", "/admin/tickets"].some((path) => pathname === path || pathname.startsWith(`${path}/`)) && !pathname.startsWith("/admin/businesses")) {
+    return NextResponse.redirect(new URL("/unauthorized", request.url));
+  }
   const allowed = capability === undefined || (role !== undefined && roleHasCapability(role, capability));
 
   if (!allowed) return NextResponse.redirect(new URL("/unauthorized", request.url));
@@ -96,5 +110,25 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
 
 // Keep this list aligned with the protected route groups requested for Novara.
 export const config = {
-  matcher: ["/login", "/dashboard/:path*", "/pos/:path*", "/kitchen/:path*", "/tables/:path*", "/orders/:path*", "/shift/:path*", "/reports/:path*", "/stock-reports/:path*", "/expenses/:path*", "/settings/:path*", "/branches/:path*", "/inventory/:path*", "/menu/:path*", "/team/:path*"],
+  matcher: [
+    "/login",
+    "/dashboard/:path*",
+    "/pos/:path*",
+    "/kitchen/:path*",
+    "/tables/:path*",
+    "/orders/:path*",
+    "/shift/:path*",
+    "/reports/:path*",
+    "/stock-reports/:path*",
+    "/expenses/:path*",
+    "/settings/:path*",
+    "/branches/:path*",
+    "/inventory/:path*",
+    "/menu/:path*",
+    "/team/:path*",
+    "/subscription/:path*",
+    "/feedback/:path*",
+    "/admin/:path*",
+    "/change-password/:path*",
+  ],
 };

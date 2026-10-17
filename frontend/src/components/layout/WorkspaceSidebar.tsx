@@ -62,6 +62,7 @@ export function WorkspaceSidebar({
   const initials = userName.split(/\s+/).map((part) => part[0]).slice(0, 2).join("").toUpperCase();
 
   return (
+    <>
     <SidebarPrimitive>
       <SidebarHeader><Brand href={brandHref} /></SidebarHeader>
       {topContent ? <div className="shrink-0">{topContent}</div> : null}
@@ -99,10 +100,10 @@ export function WorkspaceSidebar({
           );
         })}
       </SidebarContent>
-      <SidebarFooter className="space-y-3">
+      <SidebarFooter className="space-y-2.5 px-3 pb-4">
         {footer ?? <div className="truncate rounded-xl bg-sidebar-accent p-3 text-xs text-muted-foreground">{tenantName}</div>}
-        <div className="flex min-w-0 items-center gap-3 rounded-xl border border-sidebar-border/80 bg-sidebar-accent/45 p-3">
-          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+        <div className="flex min-w-0 items-center gap-3 rounded-xl border border-sidebar-border/80 bg-sidebar-accent/45 p-2.5">
+          <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary/10 text-xs font-semibold text-primary">
             {initials || <UserRound aria-hidden className="size-4" />}
           </span>
           <div className="min-w-0 flex-1">
@@ -118,8 +119,9 @@ export function WorkspaceSidebar({
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
-        {showLogout ? <LogoutButton className="w-full" /> : null}
       </SidebarFooter>
     </SidebarPrimitive>
+    {showLogout ? <div className="fixed right-4 top-3 z-[60]"><LogoutButton compact /></div> : null}
+    </>
   );
 }

@@ -12,6 +12,9 @@ export type DashboardPayload = {
   setup?: { unrecipeProducts: number; trialDaysRemaining: number | null; trialStatus: string | null; branchUsage: number; branchLimit: number | null; staffUsage: number; staffLimit: number | null; planName: string | null };
   wasteByIngredient?: { id: string; name: string; unit: string; quantity: number; value: number }[];
   trend?: { day: number; sales: number }[];
+  hourlySales?: { hour: number; sales: number; orders: number }[];
+  openOrderQueue?: { id: string; createdAt: string; totalAmount: number | string; billRequestedAt: string | null; table: { name: string } | null; createdBy: { name: string } }[];
+  reviewOrders?: { id: string; createdAt: string; status: "PARTIALLY_REFUNDED" | "REFUNDED" | "CANCELLED"; table: { name: string } | null }[];
   shiftAlerts?: { id: string; closedAt: string | null; cashVariance: number | string; branch: { name: string }; user: { name: string } }[];
   activity?: unknown[];
   dataStatus?: "NO_OPERATIONAL_DATA";
