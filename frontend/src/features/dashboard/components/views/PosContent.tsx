@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -13,11 +14,14 @@ import {
   ShoppingBag,
   Store,
   Wallet,
+  Plus,
 } from "lucide-react";
 import { DataTable, type DataColumn } from "@/components/data-table/DataTable";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SelectField } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { DashboardPayload } from "@/features/dashboard/api";
 import { EmptyPanel } from "@/features/dashboard/components/shared/EmptyPanel";
 import { HealthRow } from "@/features/dashboard/components/shared/HealthRow";
@@ -40,6 +44,7 @@ import {
   type PosPaymentInput,
 } from "@/features/pos/api/posApi";
 import { CompletePaymentDialog } from "@/features/pos/components/CompletePaymentDialog";
+import { OrderDetailsDialog } from "@/features/pos/components/OrderDetailsDialog";
 import { replaceOfflineOrderQueue, useOfflineOrderQueue } from "@/features/pos/hooks/useOfflineOrderQueue";
 import { getCurrentShift } from "@/features/shifts/api/shiftApi";
 import { ApiError, getErrorMessage } from "@/lib/api-client";
@@ -52,17 +57,20 @@ export function PosContent({
   role,
   actorId,
   tableId,
+  startNewOrder = false,
 }: {
   dashboard: DashboardPayload;
   role: string;
   actorId: string;
   tableId?: string;
+  startNewOrder?: boolean;
 }) {
   const metrics = dashboard.metrics;
   const tenantId = dashboard.tenant?.id ?? "";
   const branchId = dashboard.activeBranch?.id ?? dashboard.branches?.[0]?.id ?? "";
   const currency = dashboard.tenant?.currency ?? "NPR";
   const queryClient = useQueryClient();
+  const router = useRouter();
   const [cart, setCart] = useState<PosCartLine[]>([]);
   const [openOrderId, setOpenOrderId] = useState<string | null>(null);
   const [waiterView, setWaiterView] = useState<"new-order" | "tables" | "recent-orders">("new-order");
@@ -73,6 +81,13 @@ export function PosContent({
   const [receipt, setReceipt] = useState<{ id: string; items: Array<{ name: string; quantity: number; unitPrice: number }>; total: number } | null>(null);
   const [receiptPrintCount, setReceiptPrintCount] = useState(0);
   const [paymentTarget, setPaymentTarget] = useState<PosOrderRecord | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<PosOrderRecord | null>(null);
+  const [newOrderDialogOpen, setNewOrderDialogOpen] = useState(false);
+  const [newOrderTableId, setNewOrderTableId] = useState("");
+  const [newOrderMode, setNewOrderMode] = useState<"counter" | "dine-in">("counter");
+  const [menuSearch, setMenuSearch] = useState("");
+  const [activeCategory, setActiveCategory] = useState("all");
+  const [cashierOrderStarted, setCashierOrderStarted] = useState(startNewOrder || Boolean(tableId));
   const queueKey = `novara:offline-orders:${tenantId}:${actorId}`;
   const offlineQueue = useOfflineOrderQueue(queueKey);
   const [online, setOnline] = useState(true);
@@ -119,7 +134,7 @@ export function PosContent({
     refetchInterval: role === "CASHIER" || role === "WAITER" ? pollWhenVisible(5_000) : false,
     retry: false,
   });
-  const tableQuery = useQuery({ queryKey: ["dining-tables", tenantId, branchId], queryFn: () => listDiningTables(tenantId, branchId), enabled: Boolean(tenantId && branchId && (role === "WAITER" || tableId)), refetchInterval: pollWhenVisible(5_000), retry: false });
+  const tableQuery = useQuery({ queryKey: ["dining-tables", tenantId, branchId], queryFn: () => listDiningTables(tenantId, branchId), enabled: Boolean(tenantId && branchId && (role === "WAITER" || tableId || newOrderDialogOpen)), refetchInterval: pollWhenVisible(5_000), retry: false });
   const readyItemsQuery = useQuery({ queryKey: ["ready-order-items", tenantId, branchId], queryFn: () => listReadyOrderItems(tenantId, branchId), enabled: Boolean(tenantId && branchId && role === "WAITER"), refetchInterval: pollWhenVisible(5_000), retry: false });
   const knownReadyItems = useRef<Set<string> | null>(null);
   useEffect(() => {
@@ -137,6 +152,7 @@ export function PosContent({
     knownReadyItems.current = nextIds;
   }, [readyItemsQuery.data, role]);
   const selectedTable = tableId ? tableQuery.data?.find((table) => table.id === tableId) : undefined;
+  const availableOrderTables = (tableQuery.data ?? []).filter((table) => table.status === "FREE");
   const currentOpenOrderId = openOrderId ?? selectedTable?.openOrder?.id ?? null;
   const createOrderMutation = useMutation({
     mutationFn: (clientOrderId: string) => tableId && currentOpenOrderId ? appendPosOrderItems(tenantId, currentOpenOrderId, cart) : createPosOrder(tenantId, branchId, cart, clientOrderId, tableId),
@@ -213,8 +229,17 @@ export function PosContent({
       ]);
     },
   });
-  const products = (menuQuery.data ?? []).filter((product) => product.isAvailable);
-  const cartProduct = (productId: string) => products.find((product) => product.id === productId);
+  const availableProducts = (menuQuery.data ?? []).filter((product) => product.isAvailable);
+  const categories = useMemo(() => [...new Set(availableProducts.map((product) => product.category?.name ?? "Uncategorized"))].sort((a, b) => a.localeCompare(b)), [availableProducts]);
+  const products = useMemo(() => {
+    const search = menuSearch.trim().toLocaleLowerCase();
+    return availableProducts.filter((product) => {
+      const matchesCategory = activeCategory === "all" || (product.category?.name ?? "Uncategorized") === activeCategory;
+      const matchesSearch = !search || `${product.name} ${product.sku ?? ""} ${product.category?.name ?? ""}`.toLocaleLowerCase().includes(search);
+      return matchesCategory && matchesSearch;
+    });
+  }, [activeCategory, availableProducts, menuSearch]);
+  const cartProduct = (productId: string) => availableProducts.find((product) => product.id === productId);
   const lineUnitPrice = (line: PosCartLine) => {
     const product = cartProduct(line.productId);
     const selectedOptionIds = line.optionIds ?? [];
@@ -252,7 +277,7 @@ export function PosContent({
     .filter((order) => order.status === "OPEN")
     .sort((left, right) => Number(Boolean(right.billRequestedAt)) - Number(Boolean(left.billRequestedAt)) || Number(Boolean(right.table)) - Number(Boolean(left.table)) || new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime());
   const orderColumns: DataColumn<PosOrderRecord>[] = [
-    { id: "id", header: "Order", cell: (order) => <span className="font-mono text-xs font-semibold">#{order.id.slice(-6).toUpperCase()}</span>, accessorFn: (order) => order.id },
+    { id: "id", header: "Order", cell: (order) => <button type="button" className="font-mono text-xs font-semibold text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label={`View order ${order.id.slice(-6).toUpperCase()} details`} onClick={() => setSelectedOrder(order)}>#{order.id.slice(-6).toUpperCase()}</button>, accessorFn: (order) => order.id },
     { id: "table", header: "Table", cell: (order) => order.table ? <span className="inline-flex rounded-full border border-primary/25 bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">Table {order.table.name}</span> : <span className="text-xs text-muted-foreground">Counter</span>, accessorFn: (order) => order.table?.name ?? "Counter" },
     { id: "items", header: "Items", cell: (order) => <span className="block max-w-64 truncate">{order.items.map((item) => `${item.quantity} × ${item.product.name}`).join(", ")}</span>, accessorFn: (order) => order.items.map((item) => item.product.name).join(" ") },
     { id: "createdBy", header: "Staff", cell: (order) => <span>{order.createdBy.name}<span className="ml-1 text-xs text-muted-foreground">{order.createdBy.role?.replaceAll("_", " ")}</span></span>, accessorFn: (order) => `${order.createdBy.name} ${order.createdBy.role ?? ""}` },
@@ -265,8 +290,39 @@ export function PosContent({
     : true);
   const cashCollected = (dashboard.paymentMix ?? []).filter((payment) => payment.method === "CASH").reduce((sum, payment) => sum + payment.amount, 0);
   const nonCashCollected = (dashboard.paymentMix ?? []).filter((payment) => payment.method !== "CASH").reduce((sum, payment) => sum + payment.amount, 0);
+
+  function startCounterOrder() {
+    setNewOrderDialogOpen(false);
+    setCart([]);
+    setError("");
+    setMessage("");
+    if (tableId) {
+      router.push(`/pos?tenantId=${encodeURIComponent(tenantId)}&branchId=${encodeURIComponent(branchId)}&newOrder=1`);
+      return;
+    }
+    setCashierOrderStarted(true);
+  }
+
+  function startTableOrder() {
+    if (!newOrderTableId) return;
+    router.push(`/pos?tenantId=${encodeURIComponent(tenantId)}&branchId=${encodeURIComponent(branchId)}&tableId=${encodeURIComponent(newOrderTableId)}&newOrder=1`);
+    setNewOrderDialogOpen(false);
+  }
+
   return (
     <>
+      {role === "CASHIER" ? <section className="mb-5 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-primary/20 bg-card p-4 sm:p-5"><div><p className="text-xs font-semibold uppercase tracking-[.14em] text-primary">Point of sale</p><h2 className="mt-1 text-lg font-semibold">Ready for the next guest?</h2><p className="mt-1 text-sm text-muted-foreground">Start a counter sale or seat a dine-in order at an available table.</p></div><Button type="button" size="lg" onClick={() => { setNewOrderTableId(""); setNewOrderMode("counter"); setNewOrderDialogOpen(true); }} disabled={!branchId}><Plus aria-hidden className="size-4"/>New order</Button></section> : null}
+      <Dialog open={newOrderDialogOpen} onOpenChange={setNewOrderDialogOpen}>
+        <DialogContent className="max-h-[90dvh] w-[calc(100vw-2rem)] overflow-y-auto p-4 sm:max-w-xl sm:p-6">
+          <DialogHeader><DialogTitle>Start a new order</DialogTitle><DialogDescription>Choose where this order is being served. Dine-in orders are linked to a free table.</DialogDescription></DialogHeader>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <button type="button" aria-pressed={newOrderMode === "counter"} onClick={() => setNewOrderMode("counter")} className={cn("min-h-28 rounded-xl border p-4 text-left transition-colors hover:border-primary/50 hover:bg-primary/[.035] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", newOrderMode === "counter" ? "border-primary bg-primary/[.06] ring-1 ring-primary/30" : "border-border bg-background")}><span className="grid size-9 place-items-center rounded-lg bg-secondary text-primary"><Store aria-hidden className="size-4"/></span><span className="mt-3 block font-semibold">Counter order</span><span className="mt-1 block text-xs text-muted-foreground">Take an order at the register.</span></button>
+            <button type="button" aria-pressed={newOrderMode === "dine-in"} onClick={() => setNewOrderMode("dine-in")} className={cn("min-h-28 rounded-xl border p-4 text-left transition-colors hover:border-primary/50 hover:bg-primary/[.035] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", newOrderMode === "dine-in" ? "border-primary bg-primary/[.06] ring-1 ring-primary/30" : "border-border bg-background")}><span className="grid size-9 place-items-center rounded-lg bg-secondary text-primary"><Armchair aria-hidden className="size-4"/></span><span className="mt-3 block font-semibold">Dine-in order</span><span className="mt-1 block text-xs text-muted-foreground">Select a free table in this branch.</span></button>
+          </div>
+          {tableQuery.isPending ? <div className="h-11 animate-pulse rounded-xl bg-secondary/60" aria-label="Loading available tables" /> : tableQuery.isError ? <div role="alert" className="rounded-xl border border-destructive/25 bg-destructive/5 p-3 text-sm text-destructive">Tables could not be loaded. <Button type="button" variant="outline" size="sm" className="ml-2" onClick={() => void tableQuery.refetch()}>Retry</Button></div> : availableOrderTables.length ? <label className="space-y-2 text-sm font-medium">Available table<SelectField value={newOrderTableId} onValueChange={setNewOrderTableId} placeholder="Choose a table" options={availableOrderTables.map((table) => ({ value: table.id, label: `${table.name}${table.section ? ` · ${table.section}` : ""}` }))} /></label> : <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">There are no free tables in this branch. You can start a counter order or ask a manager to set up more tables.</p>}
+          <DialogFooter><Button type="button" variant="outline" onClick={() => setNewOrderDialogOpen(false)}>Cancel</Button>{newOrderMode === "counter" ? <Button type="button" onClick={startCounterOrder}>Continue to menu</Button> : <Button type="button" onClick={startTableOrder} disabled={!newOrderTableId || tableQuery.isPending || tableQuery.isError}>Continue to menu</Button>}</DialogFooter>
+        </DialogContent>
+      </Dialog>
       {role === "WAITER" ? <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard title="Active tables" value={tableQuery.isPending ? "—" : String(diningTables.length)} note="Tables in this branch" icon={Armchair} accent />
         <MetricCard title="Occupied" value={tableQuery.isPending ? "—" : String(occupiedTables)} note="Currently serving guests" icon={Store} />
@@ -304,16 +360,17 @@ export function PosContent({
         </article>)}</div> : <div className="rounded-xl border border-dashed p-10 text-center"><Armchair className="mx-auto size-8 text-muted-foreground"/><h3 className="mt-3 font-semibold">No tables set up for this branch</h3><p className="mt-1 text-sm text-muted-foreground">Ask an Owner or Manager to add tables and service sections.</p></div>}
       </section> : null}
       {role === "WAITER" && waiterView === "recent-orders" ? <section className="mt-5 rounded-2xl border border-border/75 bg-card p-4 shadow-sm sm:p-6"><div className="mb-4"><p className="text-sm text-muted-foreground">{dashboard.activeBranch?.name ?? "Selected branch"}</p><h2 className="mt-1 text-xl font-semibold">Recent table orders</h2><p className="mt-1 text-sm text-muted-foreground">Table number, order status, and total stay visible while you serve.</p></div>{ordersQuery.isPending ? <div className="h-40 animate-pulse rounded-xl bg-secondary/60" aria-busy="true"/> : ordersQuery.isError ? <WorkspaceError message={getErrorMessage(ordersQuery.error)} error={ordersQuery.error} retry={() => void ordersQuery.refetch()}/> : <DataTable rows={ordersQuery.data ?? []} columns={orderColumns} getRowId={(order) => order.id} enableSearch searchPlaceholder="Search table, order or item…" empty={<p className="px-4 py-12 text-center text-sm text-muted-foreground">No orders have been opened for this branch yet.</p>}/>}</section> : null}
-      {(role !== "WAITER" || waiterView === "new-order") ? <section className="mt-5 grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+      {(role === "WAITER" ? waiterView === "new-order" : role !== "CASHIER" || cashierOrderStarted || Boolean(tableId)) ? <section className="mt-5 grid items-start gap-4 xl:grid-cols-[minmax(0,4fr)_minmax(280px,1fr)] 2xl:gap-5">
         <article className="rounded-2xl border border-border/75 bg-card p-5 sm:p-6">
           <div className="flex flex-wrap items-start justify-between gap-3">
-            <div><p className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">{tableId ? selectedTable ? <><span className="inline-flex rounded-md bg-primary/10 px-2 py-1 font-semibold text-primary">Dine-in · Table {selectedTable.name}</span>{selectedTable.section ? <span>· {selectedTable.section}</span> : null}</> : tableQuery.isPending ? "Loading selected table…" : "Selected table unavailable" : role === "WAITER" ? "Select a table to begin service" : "Counter service · no table selected"}</p><h2 className="mt-1 text-xl font-semibold">{role === "WAITER" ? "Table service menu" : "Register menu"}</h2></div>
-            <span className="rounded-full bg-secondary px-3 py-1.5 text-xs font-medium">{dashboard.activeBranch?.name ?? "Choose a branch"}</span>
+            <div className="min-w-0"><p className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">{tableId ? selectedTable ? <><span className="inline-flex rounded-md bg-primary/10 px-2 py-1 font-semibold text-primary">Dine-in · Table {selectedTable.name}</span>{selectedTable.section ? <span>· {selectedTable.section}</span> : null}</> : tableQuery.isPending ? "Loading selected table…" : "Selected table unavailable" : role === "WAITER" ? "Select a table to begin service" : "Counter service · no table selected"}</p><h2 className="mt-1 text-xl font-semibold">{role === "WAITER" ? "Table service menu" : "Register menu"}</h2></div>
+            <div className="flex flex-wrap items-center gap-2"><span className="rounded-full bg-secondary px-3 py-1.5 text-xs font-medium">{dashboard.activeBranch?.name ?? "Choose a branch"}</span>{["OWNER", "MANAGER"].includes(role) ? <Button size="sm" variant="outline" render={<Link href={`/menu/products?tenantId=${tenantId}`} />}>Manage menu</Button> : null}</div>
           </div>
           {role === "WAITER" && !tableId ? <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed p-4"><p className="text-sm text-muted-foreground">Start from the service floor so every order is attached to the correct table and section.</p><Button size="sm" render={<Link href={`/tables?tenantId=${tenantId}&branchId=${branchId}`} />} disabled={!branchId}>Open tables</Button></div> : null}
-          {menuQuery.isPending ? <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3" aria-busy="true">{Array.from({ length: 6 }, (_, index) => <div key={index} className="h-28 animate-pulse rounded-xl bg-secondary/70" />)}</div> : menuQuery.isError ? <WorkspaceError message={getErrorMessage(menuQuery.error)} error={menuQuery.error} retry={() => void menuQuery.refetch()} /> : products.length ? (
+          <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><Input value={menuSearch} onChange={(event) => setMenuSearch(event.target.value)} placeholder="Search menu items…" aria-label="Search menu items" className="sm:max-w-xs"/><div className="flex max-w-full gap-2 overflow-x-auto pb-1" aria-label="Menu categories">{[{ id: "all", name: "All items" }, ...categories.map((name) => ({ id: name, name }))].map((category) => <Button key={category.id} type="button" size="sm" variant={activeCategory === category.id ? "secondary" : "ghost"} aria-pressed={activeCategory === category.id} onClick={() => setActiveCategory(category.id)} className="shrink-0">{category.name}</Button>)}</div></div>
+          {menuQuery.isPending ? <div className="mt-5 grid gap-3 sm:grid-cols-2 2xl:grid-cols-3" aria-busy="true">{Array.from({ length: 6 }, (_, index) => <div key={index} className="h-28 animate-pulse rounded-xl bg-secondary/70" />)}</div> : menuQuery.isError ? <WorkspaceError message={getErrorMessage(menuQuery.error)} error={menuQuery.error} retry={() => void menuQuery.refetch()} /> : products.length ? (
             <ProductGrid products={products} cart={cart} currency={currency} disabled={(role === "WAITER" && !tableId) || Boolean(currentOpenOrderId && !(role === "WAITER" && tableId)) || pending} onQuantityChange={updateQuantity} />
-          ) : <EmptyPanel icon={ShoppingBag} title="No available products" description="Add and activate products in Menu to start taking orders." tag="MENU EMPTY" />}
+          ) : availableProducts.length ? <EmptyPanel icon={ShoppingBag} title="No items match this view" description="Choose another category or change your search." tag="NO MATCHES" /> : <EmptyPanel icon={ShoppingBag} title="No available products" description="Add and activate products in Menu to start taking orders." tag="MENU EMPTY" />}
         </article>
         <aside className="rounded-2xl border border-border/75 bg-card p-5 sm:p-6">
           <p className="text-sm text-muted-foreground">Current ticket</p><h2 className="mt-1 text-xl font-semibold">Order summary</h2>
@@ -341,9 +398,10 @@ export function PosContent({
       </section> : null}
       {receipt ? <article id="novara-pos-receipt" className="sr-only"><h1>Novara · {dashboard.tenant?.name}</h1>{receiptPrintCount > 1 ? <p className="receipt-duplicate">DUPLICATE</p> : null}<p>{dashboard.activeBranch?.name}</p><p>Receipt #{receipt.id.slice(-6).toUpperCase()}</p><p>{formatDateTime(new Date(), "en", { dateStyle: "medium", timeStyle: "short" })}</p><hr/>{receipt.items.map((item, index) => <p key={`${item.name}-${index}`}>{item.quantity} × {item.name} — {formatMoney(item.unitPrice * item.quantity, currency)}</p>)}<hr/><strong>Total · {formatMoney(receipt.total, currency)}</strong><p>Thank you for visiting.</p></article> : null}
       {paymentTarget ? <CompletePaymentDialog key={paymentTarget.id} order={paymentTarget} currency={currency} open pending={waiterPaymentMutation.isPending} error={waiterPaymentMutation.error ? getErrorMessage(waiterPaymentMutation.error) : undefined} requireReference onClose={() => { if (!waiterPaymentMutation.isPending) setPaymentTarget(null); }} onSubmit={(payment) => waiterPaymentMutation.mutate({ orderId: paymentTarget.id, payment })} /> : null}
+      <OrderDetailsDialog order={selectedOrder} currency={currency} onOpenChange={(open) => { if (!open) setSelectedOrder(null); }} />
       {role !== "WAITER" ? <section className="mt-5 overflow-hidden rounded-2xl border border-border/75 bg-card p-4 shadow-sm sm:p-6">
         <div className="mb-4 flex flex-wrap items-end justify-between gap-3"><div><p className="text-sm text-muted-foreground">{role === "CASHIER" ? "Orders you created or checked out" : "Service activity"}</p><h2 className="mt-1 text-lg font-semibold">Recent orders</h2></div><div className="flex items-center gap-2"><span className="rounded-full bg-secondary px-3 py-1.5 text-xs font-medium">{recentOrders.length} orders</span>{role === "CASHIER" ? <div role="group" aria-label="Recent order layout" className="flex rounded-lg border p-1"><Button type="button" size="icon-sm" variant={recentOrdersView === "table" ? "secondary" : "ghost"} aria-label="Table view" aria-pressed={recentOrdersView === "table"} onClick={() => setRecentOrdersView("table")}><List aria-hidden /></Button><Button type="button" size="icon-sm" variant={recentOrdersView === "grid" ? "secondary" : "ghost"} aria-label="Grid view" aria-pressed={recentOrdersView === "grid"} onClick={() => setRecentOrdersView("grid")}><LayoutGrid aria-hidden /></Button></div> : null}</div></div>
-        {ordersQuery.isPending ? <div className="h-40 animate-pulse rounded-xl bg-secondary/60" aria-busy="true" /> : ordersQuery.isError ? <WorkspaceError message={getErrorMessage(ordersQuery.error)} error={ordersQuery.error} retry={() => void ordersQuery.refetch()} /> : recentOrdersView === "grid" && role === "CASHIER" ? recentOrders.length ? <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{recentOrders.slice(0, 18).map((order) => <article key={order.id} className="rounded-xl border border-border/75 bg-background/50 p-4"><div className="flex items-start justify-between gap-3"><div><p className="font-mono text-sm font-semibold">#{order.id.slice(-6).toUpperCase()}</p><p className="mt-1 text-xs text-muted-foreground">{order.table ? `Table ${order.table.name}` : "Counter order"}</p></div><span className={cn("rounded-full px-2.5 py-1 text-[10px] font-semibold", order.status === "OPEN" ? "bg-amber-500/10 text-amber-800 dark:text-amber-300" : "bg-emerald-500/10 text-emerald-800 dark:text-emerald-300")}>{order.status}</span></div><p className="mt-3 line-clamp-2 min-h-10 text-sm text-muted-foreground">{order.items.map((item) => `${item.quantity} × ${item.product.name}`).join(", ") || "No items"}</p><div className="mt-3 flex items-center justify-between border-t border-border/70 pt-3"><span className="text-xs text-muted-foreground">{formatDateTime(new Date(order.createdAt), "en", { dateStyle: "medium", timeStyle: "short" })}</span><strong className="tabular-nums">{formatMoney(Number(order.totalAmount), currency)}</strong></div></article>)}</div> : <div className="rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">No orders handled by you yet.</div> : <DataTable rows={recentOrders} columns={orderColumns} getRowId={(order) => order.id} enableSearch searchPlaceholder="Search order, product or staff…" empty={<div className="px-4 py-12 text-center"><p className="font-medium">{role === "CASHIER" ? "No orders handled by you yet" : "No orders for this branch yet"}</p><p className="mt-1 text-sm text-muted-foreground">Recent service activity will appear here.</p></div>} />}
+        {ordersQuery.isPending ? <div className="h-40 animate-pulse rounded-xl bg-secondary/60" aria-busy="true" /> : ordersQuery.isError ? <WorkspaceError message={getErrorMessage(ordersQuery.error)} error={ordersQuery.error} retry={() => void ordersQuery.refetch()} /> : recentOrdersView === "grid" && role === "CASHIER" ? recentOrders.length ? <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{recentOrders.slice(0, 18).map((order) => <article key={order.id} className="rounded-xl border border-border/75 bg-background/50 p-4"><div className="flex items-start justify-between gap-3"><div><p className="font-mono text-sm font-semibold">#{order.id.slice(-6).toUpperCase()}</p><p className="mt-1 text-xs text-muted-foreground">{order.table ? `Table ${order.table.name}` : "Counter order"}</p></div><span className={cn("rounded-full px-2.5 py-1 text-[10px] font-semibold", order.status === "OPEN" ? "bg-amber-500/10 text-amber-800 dark:text-amber-300" : "bg-emerald-500/10 text-emerald-800 dark:text-emerald-300")}>{order.status}</span></div><p className="mt-3 line-clamp-2 min-h-10 text-sm text-muted-foreground">{order.items.map((item) => `${item.quantity} × ${item.product.name}`).join(", ") || "No items"}</p><div className="mt-3 flex items-center justify-between border-t border-border/70 pt-3"><span className="text-xs text-muted-foreground">{formatDateTime(new Date(order.createdAt), "en", { dateStyle: "medium", timeStyle: "short" })}</span><strong className="tabular-nums">{formatMoney(Number(order.totalAmount), currency)}</strong></div><Button type="button" variant="outline" size="sm" className="mt-3 w-full" onClick={() => setSelectedOrder(order)}>View order details</Button></article>)}</div> : <div className="rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">No orders handled by you yet.</div> : <DataTable rows={recentOrders} columns={orderColumns} getRowId={(order) => order.id} actions={(order) => <Button type="button" size="sm" variant="outline" onClick={() => setSelectedOrder(order)}>View details</Button>} enableSearch searchPlaceholder="Search order, product or staff…" empty={<div className="px-4 py-12 text-center"><p className="font-medium">{role === "CASHIER" ? "No orders handled by you yet" : "No orders for this branch yet"}</p><p className="mt-1 text-sm text-muted-foreground">Recent service activity will appear here.</p></div>} />}
       </section> : null}
     </>
   );

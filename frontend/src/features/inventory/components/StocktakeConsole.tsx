@@ -1,16 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { formatDateTime } from "@/lib/formatDateTime";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { usePathname, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Activity, Boxes, ChefHat, ClipboardList, Coffee, CreditCard, LayoutDashboard, Package, Save, ClipboardCheck, Truck, ShoppingBag } from "lucide-react";
-import { WorkspaceSidebar, type WorkspaceNavGroup } from "@/components/layout/WorkspaceSidebar";
+import type { WorkspaceNavGroup } from "@/components/layout/WorkspaceSidebar";
 import { WorkspaceSearch } from "@/components/layout/WorkspaceSearch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SelectField } from "@/components/ui/select";
-import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { authApi, authQueryKeys } from "@/features/auth/api";
 import { getIngredients, getStock } from "@/features/inventory/api/inventoryApi";
@@ -20,12 +20,13 @@ import { apiClient, apiRequest, getErrorMessage } from "@/lib/api-client";
 type Branch = { id: string; name: string };
 
 export function StocktakeConsole() {
-  const pathname = usePathname();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const [selectedTenantId, setSelectedTenantId] = useState(searchParams.get("tenantId") ?? "");
   const [branchId, setBranchId] = useState("");
   const [stocktakeId, setStocktakeId] = useState("");
+  const [stocktakeSearch, setStocktakeSearch] = useState("");
+  const [stocktakeStatus, setStocktakeStatus] = useState("ALL");
   const [countOverrides, setCountOverrides] = useState<Record<string, string>>({});
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
@@ -34,7 +35,6 @@ export function StocktakeConsole() {
   const membership = memberships.find(({ tenant }) => tenant.id === selectedTenantId) ?? memberships[0];
   const tenantId = membership?.tenant.id ?? "";
   const role = membership?.role ?? "";
-  const tenantName = membership?.tenant.name ?? "Your workspace";
   const canCount = ["OWNER", "MANAGER", "INVENTORY_MANAGER"].includes(role);
   const canApprove = ["OWNER", "MANAGER"].includes(role);
   const branches = useQuery({
@@ -89,10 +89,21 @@ export function StocktakeConsole() {
     ] },
   ];
   const record = selectedStocktake.data;
+  const visibleStocktakes = useMemo(() => {
+    const search = stocktakeSearch.trim().toLocaleLowerCase();
+    return (stocktakes.data ?? []).filter((item) => {
+      const matchesStatus = stocktakeStatus === "ALL" || item.status === stocktakeStatus;
+      const matchesSearch = !search || [
+        item.branch?.name,
+        item.createdBy?.name,
+        item.status.replaceAll("_", " "),
+      ].some((value) => value?.toLocaleLowerCase().includes(search));
+      return matchesStatus && matchesSearch;
+    });
+  }, [stocktakes.data, stocktakeSearch, stocktakeStatus]);
   const stockByIngredient = new Map((stock.data?.stock ?? []).map((row) => [row.ingredient.id, Number(row.quantity)]));
 
-  return <SidebarProvider>
-    <WorkspaceSidebar role={role} tenantName={tenantName} groups={navGroups} activePath={pathname} />
+  return<>
     <SidebarInset className="min-w-0">
       <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b bg-background/95 px-4 backdrop-blur sm:px-6"><div className="flex items-center gap-3"><SidebarTrigger /><span className="text-sm font-medium">Inventory stocktakes</span></div><div className="flex items-center gap-2"><WorkspaceSearch groups={navGroups} /><ThemeToggle /></div></header>
       <main className="mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
@@ -100,7 +111,17 @@ export function StocktakeConsole() {
         {notice ? <p role="status" className="rounded-lg border bg-secondary/50 p-3 text-sm">{notice}</p> : null}{error ? <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error}</p> : null}
         {branches.isError ? <p role="alert" className="rounded-xl border border-destructive/30 p-4 text-sm text-destructive">{getErrorMessage(branches.error)}</p> : null}
         <div className="grid items-start gap-5 xl:grid-cols-[340px_minmax(0,1fr)]">
-          <section className="rounded-2xl border bg-card p-4 shadow-sm sm:p-5"><div className="mb-4 flex items-center justify-between"><h2 className="font-semibold">Recent counts</h2><span className="text-xs text-muted-foreground">{stocktakes.data?.length ?? 0}</span></div>{stocktakes.isPending ? <div className="h-32 animate-pulse rounded-xl bg-secondary" /> : stocktakes.isError ? <p role="alert" className="text-sm text-destructive">{getErrorMessage(stocktakes.error)}</p> : stocktakes.data?.length ? <div className="space-y-2">{stocktakes.data.map((item) => <button type="button" key={item.id} onClick={() => setStocktakeId(item.id)} className={`w-full rounded-xl border p-3 text-left transition hover:bg-secondary/60 ${stocktakeId === item.id ? "border-primary bg-primary/5" : ""}`}><span className="flex items-center justify-between gap-2"><strong className="text-sm">{item.status.replaceAll("_", " ")}</strong><span className="text-[10px] text-muted-foreground">{item._count?.lines ?? 0} lines</span></span><span className="mt-1 block text-xs text-muted-foreground">{formatDateTime(new Date(item.startedAt), "en", { dateStyle: "medium", timeStyle: "short" })} · {item.createdBy?.name ?? "Staff"}</span></button>)}</div> : <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">No stocktakes for this branch yet.</p>}</section>
+          <section className="min-w-0 rounded-2xl border bg-card p-4 shadow-sm sm:p-5">
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div><h2 className="font-semibold">Recent counts</h2><p className="mt-1 text-xs text-muted-foreground">Search and open a count to continue or review its actions.</p></div>
+              <span className="shrink-0 rounded-full bg-secondary px-2.5 py-1 text-xs font-medium">{visibleStocktakes.length}</span>
+            </div>
+            <div className="mb-4 grid gap-2 sm:grid-cols-[minmax(0,1fr)_150px]">
+              <Input value={stocktakeSearch} onChange={(event) => setStocktakeSearch(event.target.value)} placeholder="Search branch, staff or status…" aria-label="Search stocktakes" />
+              <SelectField aria-label="Filter stocktakes by status" value={stocktakeStatus} onValueChange={setStocktakeStatus} options={[{ value: "ALL", label: "All statuses" }, { value: "DRAFT", label: "Draft" }, { value: "SUBMITTED", label: "Submitted" }, { value: "APPROVED", label: "Approved" }, { value: "CANCELLED", label: "Cancelled" }]} />
+            </div>
+            {stocktakes.isPending ? <div className="h-32 animate-pulse rounded-xl bg-secondary" aria-busy="true" /> : stocktakes.isError ? <div role="alert" className="space-y-3 text-sm text-destructive"><p>{getErrorMessage(stocktakes.error)}</p><Button size="sm" variant="outline" onClick={() => void stocktakes.refetch()}>Retry</Button></div> : visibleStocktakes.length ? <div className="max-h-[32rem] space-y-2 overflow-y-auto pr-1">{visibleStocktakes.map((item) => <article key={item.id} className={`rounded-xl border p-3 transition ${stocktakeId === item.id ? "border-primary bg-primary/5" : "hover:bg-secondary/40"}`}><button type="button" onClick={() => setStocktakeId(item.id)} aria-pressed={stocktakeId === item.id} className="w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><span className="flex items-center justify-between gap-2"><strong className="text-sm">{item.status.replaceAll("_", " ")}</strong><span className="text-[10px] text-muted-foreground">{item._count?.lines ?? 0} lines</span></span><span className="mt-1 block text-xs text-muted-foreground">{item.branch?.name ?? "Branch"} · {formatDateTime(new Date(item.startedAt), "en", { dateStyle: "medium", timeStyle: "short" })}</span><span className="mt-1 block truncate text-xs text-muted-foreground">Started by {item.createdBy?.name ?? "Staff"}</span></button><div className="mt-3 flex justify-end border-t pt-2"><Button type="button" size="sm" variant={stocktakeId === item.id ? "secondary" : "outline"} onClick={() => setStocktakeId(item.id)}>{item.status === "DRAFT" ? "Continue count" : "Review count"}</Button></div></article>)}</div> : <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">{stocktakes.data?.length ? "No stocktakes match those filters." : "No stocktakes for this branch yet."}</p>}
+          </section>
           <section className="min-w-0 rounded-2xl border bg-card p-4 shadow-sm sm:p-5">{!stocktakeId ? <div className="py-14 text-center"><ClipboardCheck className="mx-auto size-8 text-muted-foreground" /><h2 className="mt-3 font-semibold">Choose or start a stocktake</h2><p className="mt-1 text-sm text-muted-foreground">A stocktake records physical counts and applies only the verified variance.</p></div> : selectedStocktake.isPending ? <div className="h-48 animate-pulse rounded-xl bg-secondary" /> : selectedStocktake.isError || !record ? <div role="alert" className="py-8 text-sm text-destructive">{getErrorMessage(selectedStocktake.error)}</div> : <>
             <div className="flex flex-wrap items-start justify-between gap-3"><div><div className="flex items-center gap-2"><h2 className="text-lg font-semibold">{record.branch?.name ?? "Branch stocktake"}</h2><span className="rounded-full bg-secondary px-2.5 py-1 text-[10px] font-semibold">{record.status}</span></div><p className="mt-1 text-xs text-muted-foreground">Started {formatDateTime(new Date(record.startedAt), "en", { dateStyle: "medium", timeStyle: "short" })} by {record.createdBy?.name ?? "staff"}</p></div><div className="flex flex-wrap gap-2">{record.status === "DRAFT" && canCount ? <><Button variant="outline" disabled={save.isPending || !Object.values(counts).some((value) => value.trim() !== "")} onClick={() => save.mutate()}><Save aria-hidden />{save.isPending ? "Saving…" : "Save counts"}</Button><Button disabled={transition.isPending || save.isPending || (!record.lines?.length && !Object.values(counts).some((value) => value.trim() !== ""))} onClick={() => void submitStocktake()}>{save.isPending || transition.isPending ? "Submitting…" : "Submit for approval"}</Button></> : null}{record.status === "SUBMITTED" && canApprove ? <Button disabled={transition.isPending} onClick={() => transition.mutate("approve")}>{transition.isPending ? "Applying…" : "Approve & apply variance"}</Button> : null}{["DRAFT", "SUBMITTED"].includes(record.status) && canCount ? <Button variant="ghost" disabled={transition.isPending} onClick={() => transition.mutate("cancel")}>Cancel</Button> : null}</div></div>
             {record.status === "DRAFT" ? <p className="mt-4 rounded-lg bg-amber-500/10 p-3 text-xs leading-5 text-amber-800 dark:text-amber-300">Counts save with the current timestamp. Submit when counting is complete; after submission, only an owner or manager can approve and apply variances.</p> : null}
@@ -111,5 +132,5 @@ export function StocktakeConsole() {
         </div>
       </main>
     </SidebarInset>
-  </SidebarProvider>;
+  </>;
 }
