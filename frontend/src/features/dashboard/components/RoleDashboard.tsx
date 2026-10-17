@@ -236,12 +236,6 @@ const navigation: Record<string, NavItem[]> = {
       capability: "kitchen.orders.read",
       ready: true,
     },
-    {
-      label: "Complaints & feedback",
-      href: "/feedback",
-      icon: MessageSquareText,
-      ready: true,
-    },
   ],
   INVENTORY_MANAGER: [
     { label: "Stock", href: "/inventory", icon: Boxes, ready: true },
@@ -641,9 +635,16 @@ function PosContent({
   const createOrderMutation = useMutation({
     mutationFn: (clientOrderId: string) => createPosOrder(tenantId, branchId, cart, clientOrderId),
     onSuccess: async (order) => {
-      setOpenOrderId(order.id);
       setError("");
-      setMessage("Order saved. Complete it when payment and preparation are confirmed.");
+      if (role === "WAITER") {
+        setOpenOrderId(null);
+        setCart([]);
+        setCashReceived("");
+        setMessage(`Order #${order.id.slice(0, 8).toUpperCase()} sent to the kitchen. A cashier can take payment when it is ready.`);
+      } else {
+        setOpenOrderId(order.id);
+        setMessage("Order saved. Complete it when payment and preparation are confirmed.");
+      }
       await queryClient.invalidateQueries({ queryKey: ["pos-orders", tenantId] });
     },
     onError: (reason, clientOrderId) => {
@@ -696,7 +697,7 @@ function PosContent({
   return (
     <>
       <section className="grid gap-4 sm:grid-cols-3">
-        <MetricCard title={role === "WAITER" ? "My open tables" : "My sales today"} value={role === "WAITER" ? "0" : formatMoney(metrics.ownSalesToday, currency)} note={role === "WAITER" ? "No tables are assigned right now" : "Your completed sales this shift"} icon={Store} accent />
+        <MetricCard title={role === "WAITER" ? "My open orders" : "My sales today"} value={role === "WAITER" ? String((ordersQuery.data ?? []).filter((order) => order.createdBy.id === actorId && order.status === "OPEN").length) : formatMoney(metrics.ownSalesToday, currency)} note={role === "WAITER" ? "Orders you sent to the kitchen" : "Your completed sales this shift"} icon={Store} accent />
         <MetricCard title="Orders today" value={String(metrics.ownOrdersToday ?? 0)} note="Orders you have handled" icon={ReceiptText} />
         <MetricCard title="Shift status" value={String(metrics.shiftStatus ?? "NOT_STARTED").replaceAll("_", " ")} note="Current register session" icon={Clock3} />
       </section>
@@ -719,10 +720,10 @@ function PosContent({
             return product ? <div key={product.id} className="flex items-center justify-between gap-4 text-sm"><span className="min-w-0 truncate">{line.quantity} × {product.name}</span><span className="shrink-0 font-medium tabular-nums">{formatMoney(Number(product.price) * line.quantity, currency)}</span></div> : null;
           }) : <p className="rounded-lg border border-dashed border-border p-5 text-center text-sm text-muted-foreground">Choose menu items to begin an order.</p>}</div>
           <div className="mt-5 flex items-center justify-between border-t border-border pt-4"><span className="text-sm text-muted-foreground">Total</span><strong className="text-lg tabular-nums">{formatMoney(cartTotal, currency)}</strong></div>
-          {role === "CASHIER" && !cashierShift.data ? <p className="mt-4 rounded-lg border border-amber-500/25 bg-amber-500/5 p-3 text-xs text-amber-800 dark:text-amber-300">Open your cash drawer shift before completing cash sales. <a className="font-semibold underline" href={`/shift?tenantId=${tenantId}&branchId=${branchId}`}>Open shift</a></p> : null}
-          {openOrderId ? <div className="mt-4 space-y-2"><label htmlFor="cash-received" className="text-xs font-medium text-muted-foreground">Cash received</label><Input id="cash-received" inputMode="decimal" type="number" min={cartTotal} step="0.01" value={cashReceived} onChange={(event) => setCashReceived(event.target.value)} placeholder={cartTotal.toFixed(2)} /><p className="text-xs text-muted-foreground">Change due: {formatMoney(Math.max(0, Number(cashReceived || cartTotal) - cartTotal), currency)}</p></div> : null}
+          {role === "CASHIER" && !cashierShift.data ? <p className="mt-4 rounded-lg border border-amber-500/25 bg-amber-500/5 p-3 text-xs text-amber-800 dark:text-amber-300">{cashierShift.isError ? "Your open shift could not be verified. Retry the shift check before taking payment." : "Open your cash drawer shift before completing cash sales."} <a className="font-semibold underline" href={`/shift?tenantId=${tenantId}&branchId=${branchId}`}>Open shift</a></p> : null}
+          {openOrderId && role !== "WAITER" ? <div className="mt-4 space-y-2"><label htmlFor="cash-received" className="text-xs font-medium text-muted-foreground">Cash received</label><Input id="cash-received" inputMode="decimal" type="number" min={cartTotal} step="0.01" value={cashReceived} onChange={(event) => setCashReceived(event.target.value)} placeholder={cartTotal.toFixed(2)} /><p className="text-xs text-muted-foreground">Change due: {formatMoney(Math.max(0, Number(cashReceived || cartTotal) - cartTotal), currency)}</p></div> : null}
           <Button className="mt-5 w-full" disabled={!branchId || !cart.length || pending || Boolean(openOrderId)} onClick={() => { setError(""); if (!navigator.onLine) { createOrderMutation.mutate(crypto.randomUUID()); return; } createOrderMutation.mutate(crypto.randomUUID()); }}>{createOrderMutation.isPending ? "Saving order…" : online ? "Save order" : "Queue order offline"}</Button>
-          {openOrderId ? <Button className="mt-2 w-full" variant="secondary" disabled={pending || (role === "CASHIER" && !cashierShift.data)} onClick={() => { setError(""); completeOrderMutation.mutate(); }}>{completeOrderMutation.isPending ? "Completing…" : "Take cash & complete order"}</Button> : null}
+          {openOrderId && role !== "WAITER" ? <Button className="mt-2 w-full" variant="secondary" disabled={pending || (role === "CASHIER" && (!cashierShift.data || cashierShift.isError))} onClick={() => { setError(""); completeOrderMutation.mutate(); }}>{completeOrderMutation.isPending ? "Completing…" : "Take cash & complete order"}</Button> : null}
           {receipt ? <Button type="button" className="mt-2 w-full" variant="outline" onClick={() => window.print()}>Print receipt</Button> : null}
           {!branchId ? <p className="mt-3 text-xs text-destructive">Your account needs an assigned branch before it can create an order.</p> : null}
           <div className="mt-6 space-y-3 border-t border-border pt-5"><HealthRow label="Network sync" value={!online ? "Offline · queued" : offlineQueue.length ? `${offlineQueue.length} order(s) syncing` : "Online"} /><HealthRow label="Branch" value={dashboard.activeBranch?.name ?? "—"} /></div>

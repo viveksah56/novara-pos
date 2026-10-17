@@ -24,8 +24,8 @@ export function ShiftConsole() {
   const tenantId = membership?.tenant.id ?? "";
   const role = membership?.role ?? "";
   const branches = useMemo(() => role === "OWNER" ? membership?.tenant.branches ?? [] : (membership?.tenant.branches ?? []).filter((branch) => membership?.branchAssignments.some((assignment) => assignment.branchId === branch.id)), [membership, role]);
-  const [branchId, setBranchId] = useState(params.get("branchId") ?? branches[0]?.id ?? "");
-  const activeBranchId = branchId || branches[0]?.id || "";
+  const [selectedBranchId, setSelectedBranchId] = useState(params.get("branchId") ?? "");
+  const activeBranchId = selectedBranchId || branches[0]?.id || "";
   const [openingCash, setOpeningCash] = useState("");
   const [closingCash, setClosingCash] = useState("");
   const [notice, setNotice] = useState("");
@@ -38,7 +38,7 @@ export function ShiftConsole() {
   const canUse = ["OWNER", "MANAGER", "CASHIER"].includes(role);
   return <SidebarProvider><WorkspaceSidebar role={role} tenantName={membership?.tenant.name ?? "Workspace"} activePath="/shift" groups={[{ label: "Workspace", items: [{ label: "Point of sale", href: "/pos", icon: Wallet, allowed: ["OWNER", "MANAGER", "CASHIER", "WAITER"].includes(role) }, { label: "Shift", href: "/shift", icon: Clock3, allowed: canUse }] }]} /><SidebarInset><header className="flex h-[72px] items-center gap-3 border-b px-4 sm:px-7"><SidebarTrigger /><div><p className="text-xs text-muted-foreground">Cash management</p><h1 className="text-lg font-semibold">Register shift</h1></div></header><main className="mx-auto w-full max-w-4xl space-y-5 p-4 sm:p-7">
     {!canUse ? <section className="rounded-2xl border bg-card p-6 text-sm text-muted-foreground">Cash drawer shifts are available to Owners, Managers, and Cashiers.</section> : <>
-      {branches.length > 1 ? <label className="block max-w-sm space-y-2 text-sm font-medium">Branch<SelectField value={activeBranchId} onValueChange={setBranchId} options={branches.map((branch) => ({ value: branch.id, label: branch.name }))} /></label> : null}
+      {branches.length > 1 ? <label className="block max-w-sm space-y-2 text-sm font-medium">Branch<SelectField value={activeBranchId} onValueChange={setSelectedBranchId} options={branches.map((branch) => ({ value: branch.id, label: branch.name }))} /></label> : null}
       {notice ? <p role="status" className="rounded-xl border border-emerald-600/20 bg-emerald-500/5 p-3 text-sm">{notice}</p> : null}
       {shift.isError ? <p role="alert" className="rounded-xl border border-destructive/25 bg-destructive/5 p-3 text-sm text-destructive">{getErrorMessage(shift.error)}</p> : null}
       {open.error || close.error ? <p role="alert" className="rounded-xl border border-destructive/25 bg-destructive/5 p-3 text-sm text-destructive">{getErrorMessage(open.error ?? close.error)}</p> : null}

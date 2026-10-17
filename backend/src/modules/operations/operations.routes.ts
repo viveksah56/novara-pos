@@ -36,6 +36,7 @@ function getUserId(userId: string | undefined) { if (!userId) throw new HttpErro
 const ownerManager: BusinessRole[] = ["OWNER", "MANAGER"];
 const inventoryRoles: BusinessRole[] = ["OWNER", "MANAGER", "INVENTORY_MANAGER"];
 const orderRoles: BusinessRole[] = ["OWNER", "MANAGER", "CASHIER", "WAITER"];
+const paymentRoles: BusinessRole[] = ["OWNER", "MANAGER", "CASHIER"];
 
 export const operationsRouter = Router();
 operationsRouter.use(requireAuth);
@@ -184,7 +185,8 @@ operationsRouter.post("/:tenantId/orders", async (request, response) => {
 operationsRouter.post("/:tenantId/orders/:id/complete", async (request, response) => {
   const { tenantId, userId } = params(request);
   const actorId = getUserId(userId);
-  const scope = await tenantScope(actorId, tenantId, orderRoles);
+  // Waiters may place service orders but cannot take payment or complete a sale.
+  const scope = await tenantScope(actorId, tenantId, paymentRoles);
   const id = uuid.parse(request.params.id);
 
   const order = await prisma.salesOrder.findFirst({ where: { id, tenantId }, select: { id: true, branchId: true } });
