@@ -24,7 +24,7 @@ import { HealthRow } from "@/features/dashboard/components/shared/HealthRow";
 import { MetricCard } from "@/features/dashboard/components/shared/MetricCard";
 import { WorkspaceError } from "@/features/dashboard/components/shared/WorkspaceError";
 import { playTone } from "@/features/dashboard/lib/playTone";
-import { pollWhenVisible } from "@/features/dashboard/lib/polling";
+import { pollWhenVisible } from "@/lib/polling";
 import { getMenuProducts, type MenuProduct } from "@/features/menu/api/menuApi";
 import { ProductGrid } from "@/features/menu/components/ProductGrid";
 import {

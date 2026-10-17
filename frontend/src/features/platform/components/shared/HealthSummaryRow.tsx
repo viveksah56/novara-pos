@@ -1,0 +1,1 @@
+export function HealthSummaryRow({ label, value }: { label: string; value: string }) { return <div className="flex items-center justify-between gap-4 border-b border-border/70 pb-3 text-sm last:border-0 last:pb-0"><span className="text-muted-foreground">{label}</span><span className="text-right font-semibold">{value}</span></div>; }

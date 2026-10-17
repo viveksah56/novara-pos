@@ -5,7 +5,7 @@ import { authApi, authQueryKeys } from "@/features/auth/api";
 import { dashboardKeys, getDashboard, type DashboardView } from "@/features/dashboard/api";
 import { navigation } from "@/features/dashboard/config/navigation";
 import { ROLE_HOME, viewByRole, viewsByRole } from "@/features/dashboard/config/roles";
-import { pollWhenVisible } from "@/features/dashboard/lib/polling";
+import { pollWhenVisible } from "@/lib/polling";
 import { ApiError } from "@/lib/api-client";
 import { roleHasCapability } from "@/lib/rbac";
 

@@ -18,7 +18,7 @@ import { HealthRow } from "@/features/dashboard/components/shared/HealthRow";
 import { LoadingRows } from "@/features/dashboard/components/shared/LoadingRows";
 import { MetricCard } from "@/features/dashboard/components/shared/MetricCard";
 import { dateKey } from "@/features/dashboard/lib/dateKey";
-import { pollWhenVisible } from "@/features/dashboard/lib/polling";
+import { pollWhenVisible } from "@/lib/polling";
 import { getInventoryReport, getSalesReport } from "@/features/reports/api/reportApi";
 import { formatDateTime } from "@/lib/formatDateTime";
 import { formatMoney } from "@/lib/formatMoney";

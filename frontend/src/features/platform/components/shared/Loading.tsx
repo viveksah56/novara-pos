@@ -1,0 +1,2 @@
+export function LoadingGrid() { return <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-busy="true">{Array.from({ length: 4 }, (_, index) => <div key={index} className="h-36 animate-pulse rounded-2xl bg-secondary/70" />)}<span className="sr-only">Loading platform data…</span></div>; }
+export function LoadingRows() { return <div className="space-y-3 p-5" aria-busy="true">{Array.from({ length: 5 }, (_, index) => <div key={index} className="h-14 animate-pulse rounded-xl bg-secondary/60" />)}<span className="sr-only">Loading records…</span></div>; }

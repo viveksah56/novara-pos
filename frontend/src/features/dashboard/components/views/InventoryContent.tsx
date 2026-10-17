@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import type { DashboardPayload } from "@/features/dashboard/api";
 import { LoadingRows } from "@/features/dashboard/components/shared/LoadingRows";
 import { MetricCard } from "@/features/dashboard/components/shared/MetricCard";
-import { pollWhenVisible } from "@/features/dashboard/lib/polling";
+import { pollWhenVisible } from "@/lib/polling";
 import { getStocktakes } from "@/features/inventory/api/stocktakeApi";
 import { getPurchaseOrders } from "@/features/purchasing/api/purchasingApi";
 import { getInventoryReport } from "@/features/reports/api/reportApi";
