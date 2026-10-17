@@ -7,11 +7,11 @@ import { Activity, ArrowDownRight, ArrowRight, BadgeCheck, Building2, Check, Che
 import { useEffect, useState, type ReactNode } from "react";
 import { ActionDialog, type ActionModel } from "@/components/ui/alert-dialog";
 import { DataTable, type DataColumn } from "@/components/data-table/DataTable";
-import { Brand } from "@/components/Brand";
+import { WorkspaceSidebar } from "@/components/layout/WorkspaceSidebar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SelectField } from "@/components/ui/select";
-import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupLabel, SidebarHeader, SidebarInset, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { authApi, authQueryKeys } from "@/features/auth/api";
 import type { AuthUser } from "@/features/auth/types";
@@ -153,13 +153,8 @@ function PlatformConsoleContent({ section, businessId, user, platformRole }: { s
   function showNotice(message: string, error = false) { setNotice(message); setNoticeError(error); }
   function openAction(model: ActionModel) { setNotice(""); setAction(model); }
 
-  const sidebar = <>
-    <SidebarHeader><Brand href={superAdmin ? "/admin" : "/admin/support"} /><span className="hidden size-8 place-items-center rounded-lg bg-sidebar-accent text-sidebar-foreground md:grid"><ShieldCheck className="size-4" /></span></SidebarHeader>
-    <SidebarContent><div className="mx-1 mb-7 rounded-xl border border-sidebar-border/70 bg-background/70 p-3"><div className="flex items-center gap-3"><span className="grid size-9 place-items-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground"><Globe2 className="size-4" /></span><div className="min-w-0"><p className="truncate text-sm font-semibold">Novara Platform</p><p className="mt-0.5 text-xs text-muted-foreground">{superAdmin ? "Control center" : "Customer support"}</p></div></div></div>
-      <SidebarGroup><SidebarGroupLabel>Platform</SidebarGroupLabel><SidebarMenu>{navItems.map((item) => { const Icon = item.icon; const active = item.href === "/admin/businesses" ? pathname.startsWith(item.href) : pathname === item.href; return <SidebarMenuItem key={item.href}><SidebarMenuButton href={item.href} icon={<Icon className="size-[18px]" />} isActive={active}>{item.label}</SidebarMenuButton></SidebarMenuItem>; })}</SidebarMenu></SidebarGroup>
-    </SidebarContent>
-    <SidebarFooter><div className="rounded-xl border border-sidebar-border/70 bg-sidebar-accent/60 p-3"><div className="flex items-center gap-2"><span className="size-1.5 rounded-full bg-emerald-500" /><span className="text-xs font-semibold">Platform access active</span></div><p className="mt-1.5 text-[11px] leading-5 text-muted-foreground">{superAdmin ? "Protected administrative workspace" : "Support role · limited permissions"}</p></div></SidebarFooter>
-  </>;
+  const platformSidebarFooter = <div className="rounded-xl border border-sidebar-border/70 bg-sidebar-accent/60 p-3"><div className="flex items-center gap-2"><span className="size-1.5 rounded-full bg-emerald-500" /><span className="text-xs font-semibold">Platform access active</span></div><p className="mt-1.5 text-[11px] leading-5 text-muted-foreground">{superAdmin ? "Protected administrative workspace" : "Support role · limited permissions"}</p></div>;
+  const platformSidebarTop = <div className="mx-4 mb-3 rounded-xl border border-sidebar-border/70 bg-background/70 p-3"><div className="flex items-center gap-3"><span className="grid size-9 place-items-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground"><Globe2 className="size-4" /></span><div className="min-w-0"><p className="truncate text-sm font-semibold">Novara Platform</p><p className="mt-0.5 text-xs text-muted-foreground">{superAdmin ? "Control center" : "Customer support"}</p></div></div></div>;
 
   let page: React.ReactNode;
   if (!allowedSection) page = <StatePanel title="This platform page is restricted" description="Your Support Agent role can search business workspaces but cannot change billing, system settings, or platform staff." />;
@@ -176,7 +171,7 @@ function PlatformConsoleContent({ section, businessId, user, platformRole }: { s
 
   const actionPending = actionMutation.isPending || (action?.kind === "LOGOUT" && logoutMutation.isPending);
   return <SidebarProvider>
-    <Sidebar>{sidebar}</Sidebar>
+    <WorkspaceSidebar role={platformRole} tenantName="Novara Platform" groups={[{ label: "Platform", items: navItems }]} activePath={pathname} brandHref={superAdmin ? "/admin" : "/admin/support"} topContent={platformSidebarTop} footer={platformSidebarFooter} />
     <SidebarInset>
       <header className="sticky top-0 z-30 flex h-[72px] items-center justify-between gap-3 border-b border-border/60 bg-background/85 px-4 backdrop-blur-xl sm:px-7 xl:px-9"><div className="flex min-w-0 items-center gap-2"><SidebarTrigger /><div className="min-w-0"><p className="hidden text-[10px] font-semibold uppercase tracking-[.16em] text-muted-foreground sm:block">Novara · Platform</p><h1 className="truncate text-base font-semibold tracking-tight sm:text-lg">{title}</h1></div></div><div className="flex items-center gap-2"><PlatformSearch platformRole={platformRole} /><Button variant="ghost" size="icon-lg" aria-label="Search the platform" className="md:hidden" onClick={() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true }))}><Search className="size-4" /></Button><ThemeToggle /><div className="mx-1 hidden h-8 w-px bg-border sm:block" /><div className="hidden items-center gap-2 sm:flex"><span className="grid size-9 place-items-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">{initials(user.name)}</span><div className="hidden xl:block"><p className="text-xs font-semibold">{user.name}</p><p className="mt-0.5 text-[10px] text-muted-foreground">{platformRole === "SUPER_ADMIN" ? "Super Admin" : "Support Agent"}</p></div></div><Button variant="ghost" size="icon-lg" title="Sign out" aria-label="Sign out" onClick={() => openAction({ kind: "LOGOUT", subject: user.name })}><LogOut className="size-[18px]" /></Button></div></header>
       <div className="mx-auto w-full max-w-[1480px] p-4 pb-10 sm:p-7 xl:px-10 xl:py-8"><div className="mb-6 flex flex-wrap items-end justify-between gap-3"><div><p className="text-sm text-muted-foreground">{new Intl.DateTimeFormat("en", { weekday: "long", month: "long", day: "numeric", timeZone: "Asia/Kathmandu" }).format(new Date())}</p><h2 className="mt-1 text-2xl font-semibold tracking-[-.03em] sm:text-[28px]">{title}</h2><p className="mt-1.5 text-sm text-muted-foreground">{description}</p></div></div>

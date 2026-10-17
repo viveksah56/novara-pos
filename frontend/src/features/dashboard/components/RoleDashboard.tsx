@@ -17,7 +17,6 @@ import {
   LogOut,
   MessageSquareText,
   Package,
-  Search,
   Settings2,
   ShieldCheck,
   ShoppingBag,
@@ -34,6 +33,7 @@ import {
   CircleAlert,
 } from "lucide-react";
 import { WorkspaceSidebar } from "@/components/layout/WorkspaceSidebar";
+import { WorkspaceSearch } from "@/components/layout/WorkspaceSearch";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1124,12 +1124,7 @@ function RoleDashboardContent({
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <div className="hidden items-center gap-2 rounded-lg border border-border/70 bg-card px-3 py-2 text-xs text-muted-foreground md:flex">
-                <Search className="size-3.5" /> Search{" "}
-                <kbd className="ml-4 rounded bg-secondary px-1.5 py-0.5 text-[10px]">
-                  ⌘ K
-                </kbd>
-              </div>
+              <WorkspaceSearch groups={[{ label: "Workspace", items: visibleNav }]} />
               <Button
                 variant="ghost"
                 size="icon-lg"

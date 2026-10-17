@@ -27,6 +27,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { WorkspaceSidebar, type WorkspaceNavGroup } from "@/components/layout/WorkspaceSidebar";
+import { WorkspaceSearch } from "@/components/layout/WorkspaceSearch";
 import { LogoutButton } from "@/components/layout/LogoutButton";
 import { DataTable } from "@/components/data-table/DataTable";
 import { Button } from "@/components/ui/button";
@@ -782,6 +783,7 @@ export function OperationsConsolePage({
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <WorkspaceSearch groups={navGroups} />
             <ThemeToggle />
             <LogoutButton />
             <span className="hidden text-xs text-muted-foreground sm:block">

@@ -54,14 +54,17 @@ export function WorkspaceSidebar({
     <SidebarPrimitive>
       <SidebarHeader><Brand href={brandHref} /></SidebarHeader>
       {topContent}
-      <SidebarContent>
+      <SidebarContent className="space-y-2 py-3">
         {groups.map((group) => {
           const items = group.items.filter((item) =>
             item.allowed !== false && (!item.capability || roleHasCapability(role, item.capability)),
           );
           if (!items.length) return null;
+          const activeItem = items
+            .filter(({ href }) => activePath === href || activePath.startsWith(`${href}/`))
+            .sort((left, right) => right.href.length - left.href.length)[0];
           return (
-            <SidebarGroup key={group.label}>
+            <SidebarGroup key={group.label} className="mb-0">
               <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
               <SidebarMenu>
                 {items.map((item) => {
@@ -71,7 +74,7 @@ export function WorkspaceSidebar({
                       <SidebarMenuButton
                         href={item.href}
                         icon={<Icon aria-hidden className="size-4" />}
-                        isActive={activePath === item.href}
+                        isActive={activeItem?.href === item.href}
                         disabled={item.ready === false || (!treatUnspecifiedAsReady && item.ready !== true)}
                         badge={item.badge ?? (item.ready === false ? "SOON" : undefined)}
                       >
