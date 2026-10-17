@@ -397,14 +397,29 @@ operationsRouter.get("/:tenantId/orders", async (request, response) => {
     },
     include: {
       branch: { select: { id: true, name: true } },
-      createdBy: { select: { id: true, name: true } },
+      createdBy: {
+        select: {
+          id: true,
+          name: true,
+          memberships: {
+            where: { tenantId, isActive: true },
+            select: { role: true },
+            take: 1,
+          },
+        },
+      },
       table: { select: { id: true, name: true, section: true } },
       items: { include: { modifiers: true, product: { select: { id: true, name: true, sku: true } } } },
     },
     orderBy: { createdAt: "desc" },
     take: 100,
   });
-  sendSuccess(response, { orders });
+  sendSuccess(response, {
+    orders: orders.map(({ createdBy, ...order }) => ({
+      ...order,
+      createdBy: { id: createdBy.id, name: createdBy.name, role: createdBy.memberships[0]?.role ?? null },
+    })),
+  });
 });
 
 operationsRouter.get("/:tenantId/tables", async (request, response) => {

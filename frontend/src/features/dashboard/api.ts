@@ -9,6 +9,8 @@ export type DashboardPayload = {
   activeBranch?: { id: string; name: string; timezone?: string };
   permissions?: { reportsSalesRead: boolean; reportsProfitRead: boolean; staffRead: boolean; inventoryRead: boolean };
   metrics: Record<string, number | string | null>;
+  setup?: { unrecipeProducts: number; trialDaysRemaining: number | null; trialStatus: string | null; branchUsage: number; branchLimit: number | null; staffUsage: number; staffLimit: number | null; planName: string | null };
+  wasteByIngredient?: { id: string; name: string; unit: string; quantity: number; value: number }[];
   trend?: { day: number; sales: number }[];
   shiftAlerts?: { id: string; closedAt: string | null; cashVariance: number | string; branch: { name: string }; user: { name: string } }[];
   activity?: unknown[];

@@ -95,7 +95,7 @@ function PlatformConsoleContent({ section, businessId, user, platformRole }: { s
 
   useEffect(() => { const timer = window.setTimeout(() => setDebouncedBusinessSearch(businessSearch.trim()), 250); return () => window.clearTimeout(timer); }, [businessSearch]);
 
-  const overview = useQuery({ queryKey: platformKeys.overview, queryFn: platformApi.overview, enabled: superAdmin && section === "overview", retry: false });
+  const overview = useQuery({ queryKey: platformKeys.overview, queryFn: platformApi.overview, enabled: superAdmin && section === "overview", refetchInterval: () => typeof document !== "undefined" && document.visibilityState === "visible" ? 30_000 : false, retry: false });
   const businesses = useQuery({ queryKey: platformKeys.businesses(debouncedBusinessSearch), queryFn: () => platformApi.businesses(debouncedBusinessSearch), enabled: section === "businesses", retry: false });
   const business = useQuery({ queryKey: platformKeys.business(businessId ?? ""), queryFn: () => platformApi.business(businessId!), enabled: section === "business-detail" && !!businessId, retry: false });
   const assignablePlans = useQuery({ queryKey: platformKeys.plans, queryFn: platformApi.plans, enabled: superAdmin && section === "business-detail", retry: false });

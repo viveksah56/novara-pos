@@ -48,7 +48,7 @@ export async function getDashboard(userId: string, view: DashboardView, tenantId
   const completedStatuses: Prisma.SalesOrderWhereInput["status"] = { in: ["COMPLETED", "PARTIALLY_REFUNDED", "REFUNDED"] };
   const completedTodayWhere: Prisma.SalesOrderWhereInput = { tenantId: membership.tenantId, status: completedStatuses, OR: todayScopes };
 
-  const [todayOrders, weekOrders, todayRefunds, weekRefunds, openOrders, ownTodayOrders, lowStockRows, recentMovements, pendingPurchases, currentShift, kitchenOrders, shiftAlerts] = await Promise.all([
+  const [todayOrders, weekOrders, todayRefunds, weekRefunds, openOrders, ownTodayOrders, lowStockRows, recentMovements, pendingPurchases, currentShift, kitchenOrders, readyKitchenOrders, shiftAlerts, wasteMovements, setupCounts, subscription] = await Promise.all([
     prisma.salesOrder.findMany({ where: completedTodayWhere, select: { branchId: true, totalAmount: true, completedAt: true } }),
     prisma.salesOrder.findMany({ where: { tenantId: membership.tenantId, ...branchWhere, status: completedStatuses, OR: weekScopes }, select: { branchId: true, totalAmount: true, completedAt: true } }),
     prisma.refund.findMany({ where: { tenantId: membership.tenantId, ...branchWhere, OR: calendars.map((calendar) => ({ branchId: calendar.branchId, createdAt: { gte: businessDayStartAt(now, calendar), lte: now } })) }, select: { amount: true } }),
@@ -60,9 +60,17 @@ export async function getDashboard(userId: string, view: DashboardView, tenantId
     prisma.purchase.count({ where: { tenantId: membership.tenantId, ...branchWhere, status: { in: ["DRAFT", "ORDERED"] } } }),
     prisma.shift.findFirst({ where: { tenantId: membership.tenantId, branchId: { in: scopedBranchIds }, userId, status: "OPEN" }, select: { status: true } }),
     prisma.salesOrder.findMany({ where: { tenantId: membership.tenantId, ...branchWhere, status: "OPEN", kitchenStatus: { not: "READY" } }, include: { items: { select: { quantity: true } } } }),
+    prisma.salesOrder.count({ where: { tenantId: membership.tenantId, ...branchWhere, status: "OPEN", kitchenStatus: "READY" } }),
     role === "OWNER" || role === "MANAGER"
       ? prisma.shift.findMany({ where: { tenantId: membership.tenantId, branchId: { in: scopedBranchIds }, status: "CLOSED", cashVariance: { not: 0 } }, orderBy: { closedAt: "desc" }, take: 10, select: { id: true, closedAt: true, cashVariance: true, branch: { select: { name: true } }, user: { select: { name: true } } } })
       : Promise.resolve([]),
+    view === "inventory" ? prisma.stockMovement.findMany({ where: { tenantId: membership.tenantId, type: "WASTE", OR: calendars.map((calendar) => ({ branchId: calendar.branchId, createdAt: { gte: businessWeekStartAt(now, calendar), lte: now } })) }, select: { quantity: true, ingredient: { select: { id: true, name: true, unit: true, unitCost: true } } } }) : Promise.resolve([]),
+    view === "overview" && role === "OWNER" ? Promise.all([
+      prisma.product.count({ where: { tenantId: membership.tenantId, isAvailable: true, recipe: { is: null } } }),
+      prisma.branch.count({ where: { tenantId: membership.tenantId, isActive: true } }),
+      prisma.membership.count({ where: { tenantId: membership.tenantId, isActive: true } }),
+    ]) : Promise.resolve([0, 0, 0] as [number, number, number]),
+    view === "overview" && role === "OWNER" ? prisma.subscription.findUnique({ where: { tenantId: membership.tenantId }, select: { status: true, trialEndsAt: true, plan: { select: { name: true, maxBranches: true, maxStaff: true } } } }) : Promise.resolve(null),
   ]);
   const costedOrders = role === "OWNER" && view === "overview"
     ? await prisma.salesOrder.findMany({
@@ -98,6 +106,18 @@ export async function getDashboard(userId: string, view: DashboardView, tenantId
     trendMap.set(weekday, (trendMap.get(weekday) ?? 0) + Number(order.totalAmount));
   }
   const trend = Array.from({ length: 7 }, (_, day) => ({ day, sales: trendMap.get(day) ?? 0 }));
+  const wasteByIngredient = wasteMovements.reduce<Array<{ id: string; name: string; unit: string; quantity: number; value: number }>>((rows, movement) => {
+    const current = rows.find((row) => row.id === movement.ingredient.id);
+    const quantity = Math.abs(Number(movement.quantity));
+    const value = quantity * Number(movement.ingredient.unitCost ?? 0);
+    if (current) { current.quantity += quantity; current.value += value; }
+    else rows.push({ id: movement.ingredient.id, name: movement.ingredient.name, unit: movement.ingredient.unit, quantity, value });
+    return rows;
+  }, []).sort((left, right) => right.value - left.value);
+  const [unrecipeProducts, activeBranches, activeStaff] = setupCounts;
+  const trialDaysRemaining = subscription?.status === "TRIALING" && subscription.trialEndsAt
+    ? Math.max(0, Math.ceil((subscription.trialEndsAt.getTime() - now.getTime()) / 86_400_000))
+    : null;
 
   return {
     view, role, tenant: { id: membership.tenant.id, name: membership.tenant.name, currency: membership.tenant.currency }, branches, activeBranch,
@@ -105,8 +125,10 @@ export async function getDashboard(userId: string, view: DashboardView, tenantId
     metrics: view === "overview"
       ? { salesToday, salesThisWeek: salesThisWeek - refundsThisWeek, netSales: salesToday - refundsToday, refunds: refundsToday, openOrders, lowStock, foodCostPercent: costsConfigured && salesToday > 0 ? (costOfGoods / salesToday) * 100 : null, profit: costsConfigured ? salesToday - refundsToday - costOfGoods : null }
       : view === "pos" ? { ownSalesToday, ownOrdersToday: ownTodayOrders.length, shiftStatus: currentShift ? "OPEN" : "NOT_STARTED", syncStatus: "ONLINE" }
-      : view === "kitchen" ? { incomingOrders: kitchenOrders.filter((order) => order.kitchenStatus === "PENDING").length, itemsToPrepare, readyToServe: 0 }
-      : { lowStock, recentMovements, pendingPurchases, wasteEntries: 0 },
+      : view === "kitchen" ? { incomingOrders: kitchenOrders.filter((order) => order.kitchenStatus === "PENDING").length, itemsToPrepare, readyToServe: readyKitchenOrders }
+      : { lowStock, recentMovements, pendingPurchases, wasteEntries: wasteMovements.length, wasteQuantity: wasteByIngredient.reduce((sum, row) => sum + row.quantity, 0), wasteValue: wasteByIngredient.reduce((sum, row) => sum + row.value, 0) },
+    ...(view === "overview" && role === "OWNER" ? { setup: { unrecipeProducts, trialDaysRemaining, trialStatus: subscription?.status ?? null, branchUsage: activeBranches, branchLimit: subscription?.plan.maxBranches ?? null, staffUsage: activeStaff, staffLimit: subscription?.plan.maxStaff ?? null, planName: subscription?.plan.name ?? null } } : {}),
+    ...(view === "inventory" ? { wasteByIngredient } : {}),
     trend: view === "overview" ? trend : undefined,
     shiftAlerts: view === "overview" ? shiftAlerts : undefined,
     activity: [],
