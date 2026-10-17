@@ -4,6 +4,758 @@
  */
 
 export interface paths {
+    "/tenants/current": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get current business profile */
+        get: {
+            parameters: {
+                query?: never;
+                header: {
+                    "x-tenant-id": string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Business profile. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                tenant: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    slug: string;
+                                    /** @enum {string} */
+                                    status: "ACTIVE" | "SUSPENDED";
+                                    currency: string;
+                                    legalName: string | null;
+                                    phone: string | null;
+                                    email: string | null;
+                                    address: string | null;
+                                    logoUrl: string | null;
+                                    /** Format: date-time */
+                                    createdAt?: string;
+                                    /** Format: date-time */
+                                    updatedAt?: string;
+                                };
+                            };
+                            /** @enum {string} */
+                            status: "success";
+                        };
+                    };
+                };
+                /** @description Tenant context is required. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: unknown;
+                            /** @enum {string} */
+                            status: "error";
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: {
+                                    [key: string]: string[];
+                                };
+                                requestId?: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Membership or role is not permitted. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: unknown;
+                            /** @enum {string} */
+                            status: "error";
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: {
+                                    [key: string]: string[];
+                                };
+                                requestId?: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update current business profile */
+        patch: {
+            parameters: {
+                query?: never;
+                header: {
+                    "x-tenant-id": string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        name?: string;
+                        legalName?: string | null;
+                        phone?: string | null;
+                        email?: string | "" | unknown;
+                        address?: string | null;
+                        logoUrl?: string | "" | unknown;
+                    };
+                };
+            };
+            responses: {
+                /** @description Business profile updated; slug remains unchanged. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                tenant: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    slug: string;
+                                    /** @enum {string} */
+                                    status: "ACTIVE" | "SUSPENDED";
+                                    currency: string;
+                                    legalName: string | null;
+                                    phone: string | null;
+                                    email: string | null;
+                                    address: string | null;
+                                    logoUrl: string | null;
+                                    /** Format: date-time */
+                                    createdAt?: string;
+                                    /** Format: date-time */
+                                    updatedAt?: string;
+                                };
+                            };
+                            /** @enum {string} */
+                            status: "success";
+                        };
+                    };
+                };
+                /** @description Only an owner can update business details. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: unknown;
+                            /** @enum {string} */
+                            status: "error";
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: {
+                                    [key: string]: string[];
+                                };
+                                requestId?: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/branches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List branches in the signed-in user's tenant scope */
+        get: {
+            parameters: {
+                query?: {
+                    includeInactive?: "true" | "false";
+                };
+                header: {
+                    "x-tenant-id": string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Active branches or owner-visible inactive branches. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                branches: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    tenantId: string;
+                                    name: string;
+                                    code: string;
+                                    address: string | null;
+                                    phone: string | null;
+                                    timezone: string;
+                                    currency: string;
+                                    taxRate: number | string;
+                                    taxInclusive: boolean;
+                                    serviceChargeRate: number | string;
+                                    taxRegistrationNumber: string | null;
+                                    receiptHeader: string | null;
+                                    receiptFooter: string | null;
+                                    businessDayStart: string;
+                                    allowNegativeStock: boolean;
+                                    requireShift: boolean;
+                                    requirePaymentReference: boolean;
+                                    shiftVarianceTolerance: number | string;
+                                    cashierMaxDiscountPercent: number | string;
+                                    isActive: boolean;
+                                    /** Format: date-time */
+                                    createdAt: string;
+                                    /** Format: date-time */
+                                    updatedAt: string;
+                                }[];
+                            };
+                            /** @enum {string} */
+                            status: "success";
+                        };
+                    };
+                };
+                /** @description Tenant access denied. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: unknown;
+                            /** @enum {string} */
+                            status: "error";
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: {
+                                    [key: string]: string[];
+                                };
+                                requestId?: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Create branch under the active plan limit */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    "x-tenant-id": string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        name: string;
+                        code: string;
+                        address?: string | null;
+                        phone?: string | null;
+                        timezone: string;
+                        currency?: string;
+                        taxRate?: number;
+                        taxInclusive?: boolean;
+                        serviceChargeRate?: number;
+                        taxRegistrationNumber?: string | null;
+                        receiptHeader?: string | null;
+                        receiptFooter?: string | null;
+                        businessDayStart?: string;
+                        allowNegativeStock?: boolean;
+                        requireShift?: boolean;
+                        requirePaymentReference?: boolean;
+                        shiftVarianceTolerance?: number;
+                        cashierMaxDiscountPercent?: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Branch created and audited. */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                branch: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    tenantId: string;
+                                    name: string;
+                                    code: string;
+                                    address: string | null;
+                                    phone: string | null;
+                                    timezone: string;
+                                    currency: string;
+                                    taxRate: number | string;
+                                    taxInclusive: boolean;
+                                    serviceChargeRate: number | string;
+                                    taxRegistrationNumber: string | null;
+                                    receiptHeader: string | null;
+                                    receiptFooter: string | null;
+                                    businessDayStart: string;
+                                    allowNegativeStock: boolean;
+                                    requireShift: boolean;
+                                    requirePaymentReference: boolean;
+                                    shiftVarianceTolerance: number | string;
+                                    cashierMaxDiscountPercent: number | string;
+                                    isActive: boolean;
+                                    /** Format: date-time */
+                                    createdAt: string;
+                                    /** Format: date-time */
+                                    updatedAt: string;
+                                };
+                            };
+                            /** @enum {string} */
+                            status: "success";
+                        };
+                    };
+                };
+                /** @description Active plan branch limit reached. */
+                402: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: unknown;
+                            /** @enum {string} */
+                            status: "error";
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: {
+                                    [key: string]: string[];
+                                };
+                                requestId?: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Only an owner can create branches. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: unknown;
+                            /** @enum {string} */
+                            status: "error";
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: {
+                                    [key: string]: string[];
+                                };
+                                requestId?: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Branch name or code already exists. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: unknown;
+                            /** @enum {string} */
+                            status: "error";
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: {
+                                    [key: string]: string[];
+                                };
+                                requestId?: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/branches/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get branch settings in the user's access scope */
+        get: {
+            parameters: {
+                query?: never;
+                header: {
+                    "x-tenant-id": string;
+                };
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Branch settings. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                branch: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    tenantId: string;
+                                    name: string;
+                                    code: string;
+                                    address: string | null;
+                                    phone: string | null;
+                                    timezone: string;
+                                    currency: string;
+                                    taxRate: number | string;
+                                    taxInclusive: boolean;
+                                    serviceChargeRate: number | string;
+                                    taxRegistrationNumber: string | null;
+                                    receiptHeader: string | null;
+                                    receiptFooter: string | null;
+                                    businessDayStart: string;
+                                    allowNegativeStock: boolean;
+                                    requireShift: boolean;
+                                    requirePaymentReference: boolean;
+                                    shiftVarianceTolerance: number | string;
+                                    cashierMaxDiscountPercent: number | string;
+                                    isActive: boolean;
+                                    /** Format: date-time */
+                                    createdAt: string;
+                                    /** Format: date-time */
+                                    updatedAt: string;
+                                };
+                            };
+                            /** @enum {string} */
+                            status: "success";
+                        };
+                    };
+                };
+                /** @description Branch not found in this scope. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: unknown;
+                            /** @enum {string} */
+                            status: "error";
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: {
+                                    [key: string]: string[];
+                                };
+                                requestId?: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update branch operational and receipt settings */
+        patch: {
+            parameters: {
+                query?: never;
+                header: {
+                    "x-tenant-id": string;
+                };
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        name?: string;
+                        code?: string;
+                        address?: string | null;
+                        phone?: string | null;
+                        timezone?: string;
+                        currency?: string;
+                        taxRate?: number;
+                        taxInclusive?: boolean;
+                        serviceChargeRate?: number;
+                        taxRegistrationNumber?: string | null;
+                        receiptHeader?: string | null;
+                        receiptFooter?: string | null;
+                        businessDayStart?: string;
+                        allowNegativeStock?: boolean;
+                        requireShift?: boolean;
+                        requirePaymentReference?: boolean;
+                        shiftVarianceTolerance?: number;
+                        cashierMaxDiscountPercent?: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Branch updated; the before and after state is audited. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                branch: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    tenantId: string;
+                                    name: string;
+                                    code: string;
+                                    address: string | null;
+                                    phone: string | null;
+                                    timezone: string;
+                                    currency: string;
+                                    taxRate: number | string;
+                                    taxInclusive: boolean;
+                                    serviceChargeRate: number | string;
+                                    taxRegistrationNumber: string | null;
+                                    receiptHeader: string | null;
+                                    receiptFooter: string | null;
+                                    businessDayStart: string;
+                                    allowNegativeStock: boolean;
+                                    requireShift: boolean;
+                                    requirePaymentReference: boolean;
+                                    shiftVarianceTolerance: number | string;
+                                    cashierMaxDiscountPercent: number | string;
+                                    isActive: boolean;
+                                    /** Format: date-time */
+                                    createdAt: string;
+                                    /** Format: date-time */
+                                    updatedAt: string;
+                                };
+                            };
+                            /** @enum {string} */
+                            status: "success";
+                        };
+                    };
+                };
+                /** @description Only an owner can update branch settings. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: unknown;
+                            /** @enum {string} */
+                            status: "error";
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: {
+                                    [key: string]: string[];
+                                };
+                                requestId?: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Branch name or code already exists. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: unknown;
+                            /** @enum {string} */
+                            status: "error";
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: {
+                                    [key: string]: string[];
+                                };
+                                requestId?: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/branches/{id}/deactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Deactivate branch while preserving history */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    "x-tenant-id": string;
+                };
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Branch deactivated. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                branch: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    tenantId: string;
+                                    name: string;
+                                    code: string;
+                                    address: string | null;
+                                    phone: string | null;
+                                    timezone: string;
+                                    currency: string;
+                                    taxRate: number | string;
+                                    taxInclusive: boolean;
+                                    serviceChargeRate: number | string;
+                                    taxRegistrationNumber: string | null;
+                                    receiptHeader: string | null;
+                                    receiptFooter: string | null;
+                                    businessDayStart: string;
+                                    allowNegativeStock: boolean;
+                                    requireShift: boolean;
+                                    requirePaymentReference: boolean;
+                                    shiftVarianceTolerance: number | string;
+                                    cashierMaxDiscountPercent: number | string;
+                                    isActive: boolean;
+                                    /** Format: date-time */
+                                    createdAt: string;
+                                    /** Format: date-time */
+                                    updatedAt: string;
+                                };
+                                deactivated: boolean;
+                            };
+                            /** @enum {string} */
+                            status: "success";
+                        };
+                    };
+                };
+                /** @description Only an owner can deactivate branches. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: unknown;
+                            /** @enum {string} */
+                            status: "error";
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: {
+                                    [key: string]: string[];
+                                };
+                                requestId?: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Cannot deactivate the last branch or a branch with open operations. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: unknown;
+                            /** @enum {string} */
+                            status: "error";
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: {
+                                    [key: string]: string[];
+                                };
+                                requestId?: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/register": {
         parameters: {
             query?: never;
@@ -67,6 +819,7 @@ export interface paths {
                                                 /** Format: uuid */
                                                 id: string;
                                                 name: string;
+                                                code: string;
                                                 timezone: string;
                                             }[];
                                         };
@@ -76,6 +829,9 @@ export interface paths {
                                         }[];
                                     }[];
                                 };
+                                /** Format: uuid */
+                                activeTenantId: string | null;
+                                homeRoute: string;
                             };
                             /** @enum {string} */
                             status: "success";
@@ -325,6 +1081,7 @@ export interface paths {
                                                 /** Format: uuid */
                                                 id: string;
                                                 name: string;
+                                                code: string;
                                                 timezone: string;
                                             }[];
                                         };
@@ -334,6 +1091,9 @@ export interface paths {
                                         }[];
                                     }[];
                                 };
+                                /** Format: uuid */
+                                activeTenantId: string | null;
+                                homeRoute: string;
                             };
                             /** @enum {string} */
                             status: "success";
@@ -514,7 +1274,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Current account profile. */
+                /** @description Current account profile and active workspace. */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -547,6 +1307,7 @@ export interface paths {
                                                 /** Format: uuid */
                                                 id: string;
                                                 name: string;
+                                                code: string;
                                                 timezone: string;
                                             }[];
                                         };
@@ -556,6 +1317,9 @@ export interface paths {
                                         }[];
                                     }[];
                                 };
+                                /** Format: uuid */
+                                activeTenantId: string | null;
+                                homeRoute: string;
                             };
                             /** @enum {string} */
                             status: "success";
@@ -587,6 +1351,3358 @@ export interface paths {
         };
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/password/forgot": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send a time-limited password reset link when the account exists */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** Format: email */
+                        email: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Always returns the same response to prevent account enumeration. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                message: string;
+                            };
+                            /** @enum {string} */
+                            status: "success";
+                        };
+                    };
+                };
+                /** @description Too many password recovery attempts. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: unknown;
+                            /** @enum {string} */
+                            status: "error";
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: {
+                                    [key: string]: string[];
+                                };
+                                requestId?: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/password/reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Set a new password using a one-time reset token */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        token: string;
+                        password: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Password changed and active refresh sessions revoked. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** @enum {boolean} */
+                                passwordReset: true;
+                            };
+                            /** @enum {string} */
+                            status: "success";
+                        };
+                    };
+                };
+                /** @description The reset token is invalid or expired. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: unknown;
+                            /** @enum {string} */
+                            status: "error";
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: {
+                                    [key: string]: string[];
+                                };
+                                requestId?: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/password/change": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Change the signed-in user's password */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        currentPassword: string;
+                        newPassword: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Password changed and all sessions revoked. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** @enum {boolean} */
+                                passwordChanged: true;
+                            };
+                            /** @enum {string} */
+                            status: "success";
+                        };
+                    };
+                };
+                /** @description Not signed in or current password is incorrect. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: unknown;
+                            /** @enum {string} */
+                            status: "error";
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: {
+                                    [key: string]: string[];
+                                };
+                                requestId?: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/team-invitations/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Preview an invitation before accepting it */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    token: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Invitation details. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                invitation: {
+                                    /** Format: email */
+                                    email: string;
+                                    /** @enum {string} */
+                                    role: "OWNER" | "MANAGER" | "CASHIER" | "WAITER" | "KITCHEN_STAFF" | "INVENTORY_MANAGER";
+                                    businessName: string;
+                                    branches: string[];
+                                    /** Format: date-time */
+                                    expiresAt: string;
+                                };
+                            };
+                            /** @enum {string} */
+                            status: "success";
+                        };
+                    };
+                };
+                /** @description Invitation is invalid, expired, revoked, or already used. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: unknown;
+                            /** @enum {string} */
+                            status: "error";
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: {
+                                    [key: string]: string[];
+                                };
+                                requestId?: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/team-invitations/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Accept an invitation, creating an account when needed */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        token: string;
+                        name?: string;
+                        password?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Invitation accepted; new accounts also receive session cookies. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** @enum {boolean} */
+                                accepted: true;
+                                invitation: {
+                                    /** Format: uuid */
+                                    tenantId: string;
+                                    businessName: string;
+                                    /** @enum {string} */
+                                    role: "OWNER" | "MANAGER" | "CASHIER" | "WAITER" | "KITCHEN_STAFF" | "INVENTORY_MANAGER";
+                                };
+                                user: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    /** Format: email */
+                                    email: string;
+                                    /** @enum {string|null} */
+                                    platformRole: "SUPER_ADMIN" | "SUPPORT_AGENT" | null;
+                                    isPlatformAdmin: boolean;
+                                    memberships: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        /** @enum {string} */
+                                        role: "OWNER" | "MANAGER" | "CASHIER" | "WAITER" | "KITCHEN_STAFF" | "INVENTORY_MANAGER";
+                                        tenant: {
+                                            /** Format: uuid */
+                                            id: string;
+                                            name: string;
+                                            /** @enum {string} */
+                                            status: "ACTIVE" | "SUSPENDED";
+                                            currency: string;
+                                            branches: {
+                                                /** Format: uuid */
+                                                id: string;
+                                                name: string;
+                                                code: string;
+                                                timezone: string;
+                                            }[];
+                                        };
+                                        branchAssignments: {
+                                            /** Format: uuid */
+                                            branchId: string;
+                                        }[];
+                                    }[];
+                                };
+                                /** Format: uuid */
+                                activeTenantId: string | null;
+                                homeRoute: string;
+                            };
+                            /** @enum {string} */
+                            status: "success";
+                        };
+                    };
+                };
+                /** @description Sign in with the email address that received this invitation. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: unknown;
+                            /** @enum {string} */
+                            status: "error";
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: {
+                                    [key: string]: string[];
+                                };
+                                requestId?: string;
+                            };
+                        };
+                    };
+                };
+                /** @description An active membership already exists or invitation state conflicts. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: unknown;
+                            /** @enum {string} */
+                            status: "error";
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: {
+                                    [key: string]: string[];
+                                };
+                                requestId?: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tenants/{tenantId}/team/invitations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List pending invitations in the caller's authorized branch scope */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tenantId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Pending team invitations. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                invitations: unknown[];
+                            };
+                            /** @enum {string} */
+                            status: "success";
+                        };
+                    };
+                };
+                /** @description Owner or Manager role is required. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: unknown;
+                            /** @enum {string} */
+                            status: "error";
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: {
+                                    [key: string]: string[];
+                                };
+                                requestId?: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Invite a team member with a branch-scoped, single-use token */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tenantId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** Format: email */
+                        email: string;
+                        /** @enum {string} */
+                        role: "OWNER" | "MANAGER" | "CASHIER" | "WAITER" | "KITCHEN_STAFF" | "INVENTORY_MANAGER";
+                        branchIds: string[];
+                    };
+                };
+            };
+            responses: {
+                /** @description Invitation created and sent by email. */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                invitation?: unknown;
+                            };
+                            /** @enum {string} */
+                            status: "success";
+                        };
+                    };
+                };
+                /** @description Plan staff limit has been reached. */
+                402: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: unknown;
+                            /** @enum {string} */
+                            status: "error";
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: {
+                                    [key: string]: string[];
+                                };
+                                requestId?: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Role or branch scope is not permitted. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: unknown;
+                            /** @enum {string} */
+                            status: "error";
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: {
+                                    [key: string]: string[];
+                                };
+                                requestId?: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tenants/{tenantId}/team/invitations/{invitationId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Revoke a pending team invitation */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tenantId: string;
+                    invitationId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Invitation revoked. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                invitationId: string;
+                                /** @enum {boolean} */
+                                revoked: true;
+                            };
+                            /** @enum {string} */
+                            status: "success";
+                        };
+                    };
+                };
+                /** @description Role or branch scope is not permitted. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: unknown;
+                            /** @enum {string} */
+                            status: "error";
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: {
+                                    [key: string]: string[];
+                                };
+                                requestId?: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Pending invitation not found. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: unknown;
+                            /** @enum {string} */
+                            status: "error";
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: {
+                                    [key: string]: string[];
+                                };
+                                requestId?: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tenants/{tenantId}/team/{membershipId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Deactivate membership access without deleting history */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tenantId: string;
+                    membershipId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Membership deactivated. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                membershipId: string;
+                                /** @enum {boolean} */
+                                isActive: false;
+                            };
+                            /** @enum {string} */
+                            status: "success";
+                        };
+                    };
+                };
+                /** @description Role or branch scope is not permitted. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: unknown;
+                            /** @enum {string} */
+                            status: "error";
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: {
+                                    [key: string]: string[];
+                                };
+                                requestId?: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Last Owner or open shift rules prevent deactivation. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: unknown;
+                            /** @enum {string} */
+                            status: "error";
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: {
+                                    [key: string]: string[];
+                                };
+                                requestId?: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        /** Update membership role and/or branch scope */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tenantId: string;
+                    membershipId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        role?: "OWNER" | "MANAGER" | "CASHIER" | "WAITER" | "KITCHEN_STAFF" | "INVENTORY_MANAGER";
+                        branchIds?: string[];
+                    };
+                };
+            };
+            responses: {
+                /** @description Membership updated and audited. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                membership?: unknown;
+                            };
+                            /** @enum {string} */
+                            status: "success";
+                        };
+                    };
+                };
+                /** @description Role grant or branch scope is not permitted. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: unknown;
+                            /** @enum {string} */
+                            status: "error";
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: {
+                                    [key: string]: string[];
+                                };
+                                requestId?: string;
+                            };
+                        };
+                    };
+                };
+                /** @description A last Owner cannot be demoted. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: unknown;
+                            /** @enum {string} */
+                            status: "error";
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: {
+                                    [key: string]: string[];
+                                };
+                                requestId?: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/tenants/{tenantId}/team/{membershipId}/reactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reactivate a deactivated membership */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tenantId: string;
+                    membershipId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Membership reactivated. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                membershipId: string;
+                                /** @enum {boolean} */
+                                isActive: true;
+                            };
+                            /** @enum {string} */
+                            status: "success";
+                        };
+                    };
+                };
+                /** @description Role or branch scope is not permitted. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: unknown;
+                            /** @enum {string} */
+                            status: "error";
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: {
+                                    [key: string]: string[];
+                                };
+                                requestId?: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tenants/{tenantId}/orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create a POS order with server-calculated prices and optional offline idempotency */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    "idempotency-key"?: string;
+                    "x-offline-order"?: "1";
+                    "x-offline-created-at"?: string;
+                };
+                path: {
+                    tenantId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        branchId: string;
+                        /** Format: uuid */
+                        tableId?: string;
+                        guestCount?: number;
+                        clientOrderId?: string;
+                        /** Format: date-time */
+                        clientCreatedAt?: string;
+                        items: {
+                            /** Format: uuid */
+                            productId: string;
+                            quantity: number;
+                            /** @default [] */
+                            optionIds?: string[];
+                            note?: string;
+                        }[];
+                    };
+                };
+            };
+            responses: {
+                /** @description Order created with current server pricing. */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                order?: unknown;
+                            };
+                            /** @enum {string} */
+                            status: "success";
+                        };
+                    };
+                };
+                /** @description Idempotency key was reused with a different payload. */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: unknown;
+                            /** @enum {string} */
+                            status: "error";
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: {
+                                    [key: string]: string[];
+                                };
+                                requestId?: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tenants/{tenantId}/tables": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List accessible branch tables with derived occupancy */
+        get: {
+            parameters: {
+                query?: {
+                    branchId?: string;
+                };
+                header?: never;
+                path: {
+                    tenantId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Tables and open-order summary; status is derived. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                tables: unknown[];
+                            };
+                            /** @enum {string} */
+                            status: "success";
+                        };
+                    };
+                };
+                /** @description Table access is denied. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: unknown;
+                            /** @enum {string} */
+                            status: "error";
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: {
+                                    [key: string]: string[];
+                                };
+                                requestId?: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Create a dining table */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tenantId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        branchId: string;
+                        name: string;
+                        section?: string | null;
+                        /** @default 2 */
+                        seats?: number;
+                        /** @default 0 */
+                        sortOrder?: number;
+                        /** @default true */
+                        isActive?: boolean;
+                    };
+                };
+            };
+            responses: {
+                /** @description Table created. */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                table?: unknown;
+                            };
+                            /** @enum {string} */
+                            status: "success";
+                        };
+                    };
+                };
+                /** @description Only Owners and Managers can manage tables. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: unknown;
+                            /** @enum {string} */
+                            status: "error";
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: {
+                                    [key: string]: string[];
+                                };
+                                requestId?: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tenants/{tenantId}/tables/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update table details or deactivate an unused table */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tenantId: string;
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        name?: string;
+                        section?: string | null;
+                        /** @default 2 */
+                        seats?: number;
+                        /** @default 0 */
+                        sortOrder?: number;
+                        /** @default true */
+                        isActive?: boolean;
+                    };
+                };
+            };
+            responses: {
+                /** @description Table updated. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                table?: unknown;
+                            };
+                            /** @enum {string} */
+                            status: "success";
+                        };
+                    };
+                };
+                /** @description An active order prevents deactivation. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: unknown;
+                            /** @enum {string} */
+                            status: "error";
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: {
+                                    [key: string]: string[];
+                                };
+                                requestId?: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/tenants/{tenantId}/orders/{id}/send-to-kitchen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send only unsent order items to the kitchen */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tenantId: string;
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Items sent to kitchen. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: unknown[];
+                            };
+                            /** @enum {string} */
+                            status: "success";
+                        };
+                    };
+                };
+                /** @description Order is not open. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: unknown;
+                            /** @enum {string} */
+                            status: "error";
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: {
+                                    [key: string]: string[];
+                                };
+                                requestId?: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tenants/{tenantId}/orders/{id}/request-bill": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark an open table order as bill requested */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tenantId: string;
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Bill request recorded. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                order?: unknown;
+                            };
+                            /** @enum {string} */
+                            status: "success";
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tenants/{tenantId}/kitchen/queue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read oldest active kitchen items grouped into tickets */
+        get: {
+            parameters: {
+                query?: {
+                    branchId?: string;
+                    station?: string;
+                };
+                header?: never;
+                path: {
+                    tenantId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Active unsatisfied kitchen items, scoped by branch. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                tickets: unknown[];
+                            };
+                            /** @enum {string} */
+                            status: "success";
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tenants/{tenantId}/kitchen/items/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Advance a kitchen item one step or manager-reset it with a reason */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tenantId: string;
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        status: "NEW" | "PREPARING" | "READY";
+                        reason?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Kitchen item updated. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                item?: unknown;
+                            };
+                            /** @enum {string} */
+                            status: "success";
+                        };
+                    };
+                };
+                /** @description Kitchen role cannot mark items served or reset them. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: unknown;
+                            /** @enum {string} */
+                            status: "error";
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: {
+                                    [key: string]: string[];
+                                };
+                                requestId?: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Kitchen transition must follow New → Preparing → Ready. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: unknown;
+                            /** @enum {string} */
+                            status: "error";
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: {
+                                    [key: string]: string[];
+                                };
+                                requestId?: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/tenants/{tenantId}/orders/{id}/items/{itemId}/served": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Mark a ready order item served */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tenantId: string;
+                    id: string;
+                    itemId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Item marked served. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                item?: unknown;
+                            };
+                            /** @enum {string} */
+                            status: "success";
+                        };
+                    };
+                };
+                /** @description Only ready items may be served. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: unknown;
+                            /** @enum {string} */
+                            status: "error";
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: {
+                                    [key: string]: string[];
+                                };
+                                requestId?: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/tenants/{tenantId}/orders/ready": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List ready items for waiter service */
+        get: {
+            parameters: {
+                query?: {
+                    branchId?: string;
+                };
+                header?: never;
+                path: {
+                    tenantId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Ready items in accessible branches. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                items: unknown[];
+                            };
+                            /** @enum {string} */
+                            status: "success";
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tenants/{tenantId}/orders/{id}/items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Append priced items to an existing open table order */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tenantId: string;
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        items: {
+                            /** Format: uuid */
+                            productId: string;
+                            quantity: number;
+                            /** @default [] */
+                            optionIds?: string[];
+                            note?: string;
+                        }[];
+                    };
+                };
+            };
+            responses: {
+                /** @description Items, modifiers and recalculated totals saved atomically. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                order?: unknown;
+                            };
+                            /** @enum {string} */
+                            status: "success";
+                        };
+                    };
+                };
+                /** @description Only open orders can receive additional items. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: unknown;
+                            /** @enum {string} */
+                            status: "error";
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: {
+                                    [key: string]: string[];
+                                };
+                                requestId?: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tenants/{tenantId}/orders/{id}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Complete an order with cash or split tender and deduct recipe stock atomically */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tenantId: string;
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        method?: "CASH" | "CARD" | "BANK_TRANSFER" | "DIGITAL_WALLET" | "OTHER";
+                        cashReceived?: number;
+                        reference?: string;
+                        payments?: {
+                            /** @enum {string} */
+                            method: "CASH" | "CARD" | "BANK_TRANSFER" | "DIGITAL_WALLET" | "OTHER";
+                            amount: number;
+                            tendered?: number;
+                            reference?: string;
+                        }[];
+                    };
+                };
+            };
+            responses: {
+                /** @description Order completed and payment rows saved. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                order?: unknown;
+                            };
+                            /** @enum {string} */
+                            status: "success";
+                        };
+                    };
+                };
+                /** @description Payment is invalid, insufficient, or exceeds the order amount. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: unknown;
+                            /** @enum {string} */
+                            status: "error";
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: {
+                                    [key: string]: string[];
+                                };
+                                requestId?: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Order is not open, shift is required, or stock is insufficient. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: unknown;
+                            /** @enum {string} */
+                            status: "error";
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: {
+                                    [key: string]: string[];
+                                };
+                                requestId?: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tenants/{tenantId}/orders/{id}/refunds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Issue an Owner or Manager approved full or partial refund */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tenantId: string;
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        reason: string;
+                        /** @default false */
+                        restock?: boolean;
+                        /**
+                         * @default CASH
+                         * @enum {string}
+                         */
+                        method?: "CASH" | "CARD" | "BANK_TRANSFER" | "DIGITAL_WALLET" | "OTHER";
+                        items: {
+                            /** Format: uuid */
+                            orderItemId: string;
+                            quantity: number;
+                        }[];
+                    };
+                };
+            };
+            responses: {
+                /** @description Refund recorded and order status updated. */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                refund?: unknown;
+                            };
+                            /** @enum {string} */
+                            status: "success";
+                        };
+                    };
+                };
+                /** @description Only an Owner or Manager may issue a refund. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: unknown;
+                            /** @enum {string} */
+                            status: "error";
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: {
+                                    [key: string]: string[];
+                                };
+                                requestId?: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Refund amount or item quantities exceed the remaining refundable amount. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: unknown;
+                            /** @enum {string} */
+                            status: "error";
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: {
+                                    [key: string]: string[];
+                                };
+                                requestId?: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tenants/{tenantId}/purchases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List purchases scoped to assigned branches */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tenantId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Purchase orders and receipt progress. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                purchases: unknown[];
+                            };
+                            /** @enum {string} */
+                            status: "success";
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Create a draft purchase order with purchase units and conversion factors */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tenantId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        branchId: string;
+                        /** Format: uuid */
+                        supplierId: string;
+                        reference?: string | null;
+                        notes?: string | null;
+                        items: {
+                            /** Format: uuid */
+                            ingredientId: string;
+                            quantity: number;
+                            /**
+                             * @default EACH
+                             * @enum {string}
+                             */
+                            unit?: "EACH" | "GRAM" | "KILOGRAM" | "MILLILITER" | "LITER" | "OUNCE" | "POUND";
+                            /** @default 1 */
+                            unitFactor?: number;
+                            unitCost: number;
+                        }[];
+                    };
+                };
+            };
+            responses: {
+                /** @description Draft purchase order created. */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                purchase?: unknown;
+                            };
+                            /** @enum {string} */
+                            status: "success";
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tenants/{tenantId}/purchases/{id}/order": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Place a draft purchase order */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tenantId: string;
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Purchase placed. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                purchase?: unknown;
+                            };
+                            /** @enum {string} */
+                            status: "success";
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tenants/{tenantId}/purchases/{id}/receive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Receive partial or full purchase quantities and update weighted average cost */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tenantId: string;
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        lines: {
+                            /** Format: uuid */
+                            purchaseItemId: string;
+                            quantity: number;
+                        }[];
+                    };
+                };
+            };
+            responses: {
+                /** @description Receipt saved; stock levels, weighted cost and movements updated atomically. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                purchase?: unknown;
+                            };
+                            /** @enum {string} */
+                            status: "success";
+                        };
+                    };
+                };
+                /** @description Received quantity exceeds the outstanding purchase quantity. */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: unknown;
+                            /** @enum {string} */
+                            status: "error";
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: {
+                                    [key: string]: string[];
+                                };
+                                requestId?: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tenants/{tenantId}/purchases/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel a purchase that has no received stock */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tenantId: string;
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Purchase cancelled. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                purchaseId: string;
+                                cancelled: boolean;
+                            };
+                            /** @enum {string} */
+                            status: "success";
+                        };
+                    };
+                };
+                /** @description Purchase is not cancellable. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: unknown;
+                            /** @enum {string} */
+                            status: "error";
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: {
+                                    [key: string]: string[];
+                                };
+                                requestId?: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tenants/{tenantId}/stocktakes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List stocktakes in the caller's accessible branch scope */
+        get: {
+            parameters: {
+                query?: {
+                    branchId?: string;
+                };
+                header?: never;
+                path: {
+                    tenantId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Stocktakes with branch, creator and line counts. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                stocktakes: unknown[];
+                            };
+                            /** @enum {string} */
+                            status: "success";
+                        };
+                    };
+                };
+                /** @description Inventory access is denied. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: unknown;
+                            /** @enum {string} */
+                            status: "error";
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: {
+                                    [key: string]: string[];
+                                };
+                                requestId?: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Start a branch stocktake */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tenantId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        branchId: string;
+                        note?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Draft stocktake started. */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                stocktake?: unknown;
+                            };
+                            /** @enum {string} */
+                            status: "success";
+                        };
+                    };
+                };
+                /** @description Inventory access is denied. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: unknown;
+                            /** @enum {string} */
+                            status: "error";
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: {
+                                    [key: string]: string[];
+                                };
+                                requestId?: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tenants/{tenantId}/stocktakes/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read a scoped stocktake and its ingredient counts */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tenantId: string;
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Stocktake details. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                stocktake?: unknown;
+                            };
+                            /** @enum {string} */
+                            status: "success";
+                        };
+                    };
+                };
+                /** @description Stocktake not found. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: unknown;
+                            /** @enum {string} */
+                            status: "error";
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: {
+                                    [key: string]: string[];
+                                };
+                                requestId?: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tenants/{tenantId}/stocktakes/{id}/lines": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Save physical counts on a draft stocktake */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tenantId: string;
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        lines: {
+                            /** Format: uuid */
+                            ingredientId: string;
+                            countedQuantity: number;
+                        }[];
+                    };
+                };
+            };
+            responses: {
+                /** @description Counts saved with count timestamps. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                stocktake?: unknown;
+                            };
+                            /** @enum {string} */
+                            status: "success";
+                        };
+                    };
+                };
+                /** @description Only draft stocktakes can be counted. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: unknown;
+                            /** @enum {string} */
+                            status: "error";
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: {
+                                    [key: string]: string[];
+                                };
+                                requestId?: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tenants/{tenantId}/stocktakes/{id}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit saved counts for owner or manager approval */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tenantId: string;
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Stocktake submitted. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                stocktake?: unknown;
+                            };
+                            /** @enum {string} */
+                            status: "success";
+                        };
+                    };
+                };
+                /** @description Stocktake is empty or is not a draft. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: unknown;
+                            /** @enum {string} */
+                            status: "error";
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: {
+                                    [key: string]: string[];
+                                };
+                                requestId?: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tenants/{tenantId}/stocktakes/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve counts and apply count-time variances atomically */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tenantId: string;
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Variance movements applied; post-count stock movements are preserved. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                stocktake?: unknown;
+                            };
+                            /** @enum {string} */
+                            status: "success";
+                        };
+                    };
+                };
+                /** @description Only owners and managers can approve stocktakes. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: unknown;
+                            /** @enum {string} */
+                            status: "error";
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: {
+                                    [key: string]: string[];
+                                };
+                                requestId?: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Stocktake has not been submitted or was already processed. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: unknown;
+                            /** @enum {string} */
+                            status: "error";
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: {
+                                    [key: string]: string[];
+                                };
+                                requestId?: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tenants/{tenantId}/stocktakes/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel a draft or submitted stocktake */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tenantId: string;
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Stocktake cancelled. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                stocktakeId: string;
+                                cancelled: boolean;
+                            };
+                            /** @enum {string} */
+                            status: "success";
+                        };
+                    };
+                };
+                /** @description Approved stocktakes cannot be cancelled. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: unknown;
+                            /** @enum {string} */
+                            status: "error";
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: {
+                                    [key: string]: string[];
+                                };
+                                requestId?: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tenants/{tenantId}/inventory/valuation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read branch stock valuation using weighted average ingredient costs */
+        get: {
+            parameters: {
+                query?: {
+                    branchId?: string;
+                };
+                header?: never;
+                path: {
+                    tenantId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Stock valuation grouped by branch. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                total: string;
+                                byBranch: {
+                                    /** Format: uuid */
+                                    branchId: string;
+                                    branchName: string;
+                                    value: string;
+                                }[];
+                                stock: unknown[];
+                            };
+                            /** @enum {string} */
+                            status: "success";
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tenants/{tenantId}/reports/sales": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read sales and refund totals using each branch business-day calendar */
+        get: {
+            parameters: {
+                query?: {
+                    branchId?: string;
+                    from?: string;
+                    to?: string;
+                };
+                header?: never;
+                path: {
+                    tenantId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Sales report grouped by branch-local business dates. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                range: {
+                                    /** Format: date-time */
+                                    from: string;
+                                    /** Format: date-time */
+                                    to: string;
+                                };
+                                currency: string;
+                                summary?: unknown;
+                                daily: unknown[];
+                                bestSellers: unknown[];
+                            };
+                            /** @enum {string} */
+                            status: "success";
+                        };
+                    };
+                };
+                /** @description Owner or Manager role is required. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: unknown;
+                            /** @enum {string} */
+                            status: "error";
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: {
+                                    [key: string]: string[];
+                                };
+                                requestId?: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tenants/{tenantId}/reports/inventory": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read low stock alerts, stock valuation and recent movement ledger */
+        get: {
+            parameters: {
+                query?: {
+                    branchId?: string;
+                };
+                header?: never;
+                path: {
+                    tenantId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Inventory report scoped to accessible branches. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                lowStock: unknown[];
+                                movements: unknown[];
+                                valuation: {
+                                    total: string;
+                                    currency: string;
+                                };
+                            };
+                            /** @enum {string} */
+                            status: "success";
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tenants/{tenantId}/expense-categories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List business expense categories */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tenantId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Expense categories. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                categories: unknown[];
+                            };
+                            /** @enum {string} */
+                            status: "success";
+                        };
+                    };
+                };
+                /** @description Only Owners and Managers can read expenses. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: unknown;
+                            /** @enum {string} */
+                            status: "error";
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: {
+                                    [key: string]: string[];
+                                };
+                                requestId?: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Create an expense category */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tenantId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        name: string;
+                        isActive?: boolean;
+                    };
+                };
+            };
+            responses: {
+                /** @description Expense category created. */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                category?: unknown;
+                            };
+                            /** @enum {string} */
+                            status: "success";
+                        };
+                    };
+                };
+                /** @description Only Owners and Managers can manage expenses. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: unknown;
+                            /** @enum {string} */
+                            status: "error";
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: {
+                                    [key: string]: string[];
+                                };
+                                requestId?: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tenants/{tenantId}/expenses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List branch-scoped expenses with date filters */
+        get: {
+            parameters: {
+                query?: {
+                    branchId?: string;
+                    from?: string;
+                    to?: string;
+                    includeVoided?: "true" | "false";
+                };
+                header?: never;
+                path: {
+                    tenantId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Expenses with category, branch, creator and void metadata. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                expenses: unknown[];
+                            };
+                            /** @enum {string} */
+                            status: "success";
+                        };
+                    };
+                };
+                /** @description Only Owners and Managers can read expenses. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: unknown;
+                            /** @enum {string} */
+                            status: "error";
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: {
+                                    [key: string]: string[];
+                                };
+                                requestId?: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Record an expense and reconcile cash against an open shift */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tenantId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        branchId: string;
+                        /** Format: uuid */
+                        categoryId: string;
+                        amount: number;
+                        /** Format: date */
+                        expenseDate: string;
+                        description: string;
+                        /** @enum {string} */
+                        paymentMethod: "CASH" | "CARD" | "BANK_TRANSFER" | "DIGITAL_WALLET" | "OTHER";
+                        reference?: string | null;
+                    };
+                };
+            };
+            responses: {
+                /** @description Expense recorded and audit event created. */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                expense?: unknown;
+                            };
+                            /** @enum {string} */
+                            status: "success";
+                        };
+                    };
+                };
+                /** @description Expense date, branch, category or amount is invalid. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: unknown;
+                            /** @enum {string} */
+                            status: "error";
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: {
+                                    [key: string]: string[];
+                                };
+                                requestId?: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Only Owners and Managers can manage expenses. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: unknown;
+                            /** @enum {string} */
+                            status: "error";
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: {
+                                    [key: string]: string[];
+                                };
+                                requestId?: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tenants/{tenantId}/expenses/{id}/void": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Void an expense with an auditable reason and reverse cash payout */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tenantId: string;
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        reason: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Expense voided; a linked cash movement is reversed. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                expense?: unknown;
+                            };
+                            /** @enum {string} */
+                            status: "success";
+                        };
+                    };
+                };
+                /** @description Expense not found. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: unknown;
+                            /** @enum {string} */
+                            status: "error";
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: {
+                                    [key: string]: string[];
+                                };
+                                requestId?: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Expense has already been voided. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: unknown;
+                            /** @enum {string} */
+                            status: "error";
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: {
+                                    [key: string]: string[];
+                                };
+                                requestId?: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tenants/{tenantId}/reports/expenses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read expense totals grouped by category and month */
+        get: {
+            parameters: {
+                query: {
+                    branchId?: string;
+                    from: string;
+                    to: string;
+                };
+                header?: never;
+                path: {
+                    tenantId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Non-voided expenses grouped by category and month. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                range: {
+                                    /** Format: date-time */
+                                    from: string;
+                                    /** Format: date-time */
+                                    to: string;
+                                };
+                                total: number;
+                                byCategoryAndMonth: {
+                                    /** Format: uuid */
+                                    categoryId: string;
+                                    category: string;
+                                    month: string;
+                                    total: number;
+                                }[];
+                            };
+                            /** @enum {string} */
+                            status: "success";
+                        };
+                    };
+                };
+                /** @description Only Owners and Managers can read expenses. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: unknown;
+                            /** @enum {string} */
+                            status: "error";
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: {
+                                    [key: string]: string[];
+                                };
+                                requestId?: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tenants/{tenantId}/shifts/{id}/cash-movements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record an auditable cash pay-in or pay-out against an open shift */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tenantId: string;
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        type: "PAY_IN" | "PAY_OUT";
+                        amount: number;
+                        reason: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Movement recorded and the shift cash expectation adjusted. */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                movement?: unknown;
+                            };
+                            /** @enum {string} */
+                            status: "success";
+                        };
+                    };
+                };
+                /** @description Shift or branch access denied. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: unknown;
+                            /** @enum {string} */
+                            status: "error";
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: {
+                                    [key: string]: string[];
+                                };
+                                requestId?: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Shift is closed or the drawer does not have enough expected cash. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: unknown;
+                            /** @enum {string} */
+                            status: "error";
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: {
+                                    [key: string]: string[];
+                                };
+                                requestId?: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;

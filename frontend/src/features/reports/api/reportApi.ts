@@ -3,11 +3,13 @@ import { apiClient, apiRequest } from "@/lib/api-client";
 export type SalesReport = {
   range: { from: string; to: string };
   currency: string;
-  summary: { orderCount: number; grossSales: number; netSales: number; refunds: number; profit?: number; foodCostPercent?: number };
+  summary: { orderCount: number; grossSales: number; netSales: number; refunds: number; refundCount?: number; expenses?: number; profit?: number; operatingProfitBeforeIncomeTax?: number; foodCostPercent?: number };
   daily: { date: string; orders: number; sales: number }[];
   bestSellers: { id: string; name: string; quantity: number; sales: number }[];
+  paymentBreakdown: { method: string; amount: number }[];
 };
 export type InventoryReport = {
+  valuation: { total: string; currency: string };
   lowStock: { id: string; quantity: string | number; reorderLevel: string | number; ingredient: { id: string; name: string; unit: string }; branch: { id: string; name: string } }[];
   movements: { id: string; quantity: string | number; type: string; createdAt: string; ingredient: { name: string; unit: string }; branch: { name: string } }[];
 };

@@ -72,7 +72,7 @@ apiClient.interceptors.response.use(
 
     const config = error.config as AuthRequestConfig | undefined;
     const url = config?.url ?? "";
-    const isSessionEndpoint = ["/auth/login", "/auth/register", "/auth/refresh", "/auth/logout"].some((path) => url.includes(path));
+    const isSessionEndpoint = ["/auth/login", "/auth/register", "/auth/refresh", "/auth/logout", "/auth/password/forgot", "/auth/password/reset"].some((path) => url.includes(path));
 
     if (error.response?.status === 401 && config && !config.authRetried && !config.skipAuthRefresh && !isSessionEndpoint) {
       config.authRetried = true;

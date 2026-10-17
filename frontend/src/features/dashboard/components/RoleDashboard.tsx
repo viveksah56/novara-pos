@@ -3,18 +3,19 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Activity,
   ArrowUpRight,
+  Armchair,
   Bell,
   ChefHat,
   CircleDollarSign,
   ClipboardList,
+  ClipboardCheck,
   Clock3,
   CreditCard,
   LayoutDashboard,
-  LogOut,
   MessageSquareText,
   Package,
   Settings2,
@@ -31,6 +32,9 @@ import {
   Store,
   Truck,
   CircleAlert,
+  TrendingUp,
+  AlertTriangle,
+  Utensils,
 } from "lucide-react";
 import { WorkspaceSidebar } from "@/components/layout/WorkspaceSidebar";
 import { WorkspaceSearch } from "@/components/layout/WorkspaceSearch";
@@ -38,7 +42,6 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SelectField } from "@/components/ui/select";
-import { ActionDialog, type ActionModel } from "@/components/ui/alert-dialog";
 import {
   SidebarInset,
   SidebarProvider,
@@ -56,18 +59,22 @@ import { roleHasCapability, type Capability } from "@/lib/rbac";
 import { formatMoney } from "@/lib/formatMoney";
 import { getMenuProducts, type MenuProduct } from "@/features/menu/api/menuApi";
 import { DataTable, type DataColumn } from "@/components/data-table/DataTable";
-import { completePosOrder, createPosOrder, listPosOrders, type PosCartLine, type PosOrderRecord } from "@/features/pos/api/posApi";
+import { appendPosOrderItems, completePosOrder, createPosOrder, listDiningTables, listPosOrders, sendOrderToKitchen, type PosCartLine, type PosOrderRecord } from "@/features/pos/api/posApi";
 import { ProductGrid } from "@/features/menu/components/ProductGrid";
 import { getKitchenOrders, updateKitchenOrder } from "@/features/kitchen/api/kitchenApi";
 import { getCurrentShift } from "@/features/shifts/api/shiftApi";
 import { replaceOfflineOrderQueue, useOfflineOrderQueue } from "@/features/pos/hooks/useOfflineOrderQueue";
 import { cn } from "@/lib/utils";
+import { getSalesReport, getInventoryReport } from "@/features/reports/api/reportApi";
+import { getPurchaseOrders } from "@/features/purchasing/api/purchasingApi";
+import { getStocktakes } from "@/features/inventory/api/stocktakeApi";
+import { listReadyOrderItems } from "@/features/pos/api/posApi";
 
 const ROLE_HOME: Record<string, string> = {
   OWNER: "/dashboard",
   MANAGER: "/dashboard",
   CASHIER: "/pos",
-  WAITER: "/pos",
+  WAITER: "/tables",
   KITCHEN_STAFF: "/kitchen",
   INVENTORY_MANAGER: "/inventory",
   PLATFORM_ADMIN: "/admin",
@@ -99,6 +106,7 @@ const navigation: Record<string, NavItem[]> = {
       ready: true,
     },
     { label: "Orders", href: "/orders", icon: ClipboardList, capability: "orders.read" },
+    { label: "Tables", href: "/tables", icon: Store, capability: "orders.read" },
     { label: "Register shift", href: "/shift", icon: Clock3, capability: "shifts.read" },
     {
       label: "Menu & products",
@@ -106,6 +114,7 @@ const navigation: Record<string, NavItem[]> = {
       icon: Coffee,
       ready: true,
     },
+    { label: "Modifiers", href: "/menu/modifiers", icon: Coffee, ready: true },
     {
       label: "Inventory",
       href: "/inventory",
@@ -113,6 +122,7 @@ const navigation: Record<string, NavItem[]> = {
       capability: "inventory.read",
       permission: "inventoryRead",
     },
+    { label: "Stocktakes", href: "/inventory/stocktakes", icon: ClipboardCheck, capability: "inventory.read", permission: "inventoryRead" },
     { label: "Stock reports", href: "/stock-reports", icon: Boxes, capability: "reports.inventory.read" },
     {
       label: "Reports",
@@ -128,7 +138,7 @@ const navigation: Record<string, NavItem[]> = {
       permission: "staffRead",
       ready: true,
     },
-    { label: "Branches", href: "/branches", icon: Building2, ready: true },
+    { label: "Branches", href: "/settings/branches", icon: Building2, capability: "settings.read", ready: true },
     {
       label: "Settings",
       href: "/settings",
@@ -159,6 +169,7 @@ const navigation: Record<string, NavItem[]> = {
       ready: true,
     },
     { label: "Orders", href: "/orders", icon: ClipboardList, capability: "orders.read" },
+    { label: "Tables", href: "/tables", icon: Store, capability: "orders.read" },
     { label: "Register shift", href: "/shift", icon: Clock3, capability: "shifts.read" },
     {
       label: "Menu & products",
@@ -166,6 +177,7 @@ const navigation: Record<string, NavItem[]> = {
       icon: Coffee,
       ready: true,
     },
+    { label: "Modifiers", href: "/menu/modifiers", icon: Coffee, ready: true },
     {
       label: "Inventory",
       href: "/inventory",
@@ -173,6 +185,7 @@ const navigation: Record<string, NavItem[]> = {
       capability: "inventory.read",
       permission: "inventoryRead",
     },
+    { label: "Stocktakes", href: "/inventory/stocktakes", icon: ClipboardCheck, capability: "inventory.read", permission: "inventoryRead" },
     {
       label: "Sales reports",
       href: "/reports",
@@ -215,7 +228,7 @@ const navigation: Record<string, NavItem[]> = {
   WAITER: [
     {
       label: "Tables",
-      href: "/pos",
+      href: "/tables",
       icon: Store,
       capability: "orders.create",
       ready: true,
@@ -238,6 +251,7 @@ const navigation: Record<string, NavItem[]> = {
     },
   ],
   INVENTORY_MANAGER: [
+    { label: "Stocktakes", href: "/inventory/stocktakes", icon: ClipboardCheck, capability: "inventory.read", ready: true },
     { label: "Stock", href: "/inventory", icon: Boxes, ready: true },
     {
       label: "Ingredients",
@@ -442,33 +456,102 @@ function OverviewContent({
 }) {
   const metrics = dashboard.metrics;
   const currency = dashboard.tenant?.currency ?? "NPR";
-  const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const tenantId = dashboard.tenant?.id ?? "";
+  const branchId = dashboard.activeBranch?.id;
+  const branchTimezone = dashboard.activeBranch?.timezone;
+  const today = new Date();
+  const from = new Date(today);
+  from.setDate(today.getDate() - 6);
+  const range = { from: dateKey(from, branchTimezone), to: dateKey(today, branchTimezone) };
+  const report = useQuery({
+    queryKey: ["reports", tenantId, "dashboard-week", branchId, range.from, range.to],
+    queryFn: () => getSalesReport(tenantId, { ...range, ...(branchId ? { branchId } : {}) }),
+    enabled: Boolean(tenantId),
+    staleTime: 30_000,
+    retry: false,
+  });
+  const todayReport = useQuery({
+    queryKey: ["reports", tenantId, "dashboard-today", branchId, range.to],
+    queryFn: () => getSalesReport(tenantId, { from: range.to, to: range.to, ...(branchId ? { branchId } : {}) }),
+    enabled: Boolean(tenantId),
+    staleTime: 30_000,
+    retry: false,
+  });
+  const inventory = useQuery({
+    queryKey: ["reports", tenantId, "dashboard-inventory", branchId],
+    queryFn: () => getInventoryReport(tenantId, branchId),
+    enabled: Boolean(tenantId && dashboard.permissions?.inventoryRead),
+    staleTime: 30_000,
+    retry: false,
+  });
+  const orders = useQuery({
+    queryKey: ["pos-orders", tenantId, branchId, "dashboard-overview"],
+    queryFn: () => listPosOrders(tenantId, branchId),
+    enabled: Boolean(tenantId),
+    staleTime: 15_000,
+    retry: false,
+  });
+  const branchReports = useQueries({
+    queries: (role === "OWNER" && !branchId ? dashboard.branches ?? [] : []).map((branch) => ({
+      queryKey: ["reports", tenantId, "dashboard-branch", branch.id, range.from, range.to],
+      queryFn: () => getSalesReport(tenantId, { ...range, branchId: branch.id }),
+      enabled: Boolean(tenantId),
+      staleTime: 30_000,
+      retry: false,
+    })),
+  });
+  const reportDaily = report.data?.daily ?? [];
+  const daily = Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(from);
+    date.setDate(from.getDate() + index);
+    const key = dateKey(date, branchTimezone);
+    return reportDaily.find((item) => item.date.slice(0, 10) === key) ?? { date: key, orders: 0, sales: 0 };
+  });
+  const todayKey = dateKey(today, branchTimezone);
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const todaySales = daily.find((item) => item.date.slice(0, 10) === todayKey)?.sales ?? Number(metrics.netSales ?? 0);
+  const yesterdaySales = daily.find((item) => item.date.slice(0, 10) === dateKey(yesterday, branchTimezone))?.sales;
+  const orderCount = daily.find((item) => item.date.slice(0, 10) === todayKey)?.orders ?? 0;
+  const averageOrderValue = orderCount > 0 ? todaySales / orderCount : 0;
+  const changePercent = yesterdaySales && yesterdaySales !== 0 ? ((todaySales - yesterdaySales) / Math.abs(yesterdaySales)) * 100 : null;
+  const lowStockRows = inventory.data?.lowStock ?? [];
+  const chartMaximum = Math.max(1, ...daily.map((item) => item.sales));
+  const openOrders = (orders.data ?? []).filter((order) => order.status === "OPEN").slice(0, 5);
+  const hourlySales = Array.from({ length: 24 }, (_, hour) => ({ hour, sales: 0, orders: 0 }));
+  for (const order of orders.data ?? []) {
+    if (!order.completedAt || dateKey(new Date(order.completedAt), branchTimezone) !== todayKey) continue;
+    const hour = Number(new Intl.DateTimeFormat("en", { timeZone: branchTimezone, hour: "2-digit", hourCycle: "h23" }).format(new Date(order.completedAt)));
+    const slot = hourlySales[hour];
+    if (slot) { slot.orders += 1; slot.sales += Number(order.totalAmount); }
+  }
+  const hourlyMaximum = Math.max(1, ...hourlySales.map((item) => item.sales));
   return (
     <>
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard
           title="Sales today"
-          value={formatMoney(metrics.salesToday, currency)}
-          note="No completed sales yet today"
+          value={formatMoney(todaySales, currency)}
+          note={`${orderCount} orders · ${formatMoney(averageOrderValue, currency)} average order`}
           icon={CircleDollarSign}
           accent
         />
         <MetricCard
-          title="This week"
-          value={formatMoney(metrics.salesThisWeek, currency)}
-          note="Week to date · all selected branches"
+          title="Compared with yesterday"
+          value={changePercent === null ? "—" : `${changePercent >= 0 ? "+" : ""}${changePercent.toFixed(1)}%`}
+          note={yesterdaySales === undefined ? "Yesterday’s comparable sales are unavailable" : formatMoney(yesterdaySales, currency)}
+          icon={TrendingUp}
+        />
+        <MetricCard
+          title="Refunds today"
+          value={formatMoney(metrics.refunds, currency)}
+          note="Refund value recorded today"
           icon={ArrowUpRight}
         />
         <MetricCard
-          title="Open orders"
-          value={String(metrics.openOrders ?? 0)}
-          note="Orders currently in progress"
-          icon={ClipboardList}
-        />
-        <MetricCard
           title="Low stock items"
-          value={String(metrics.lowStock ?? 0)}
-          note="Items that need attention"
+          value={String(lowStockRows.length || metrics.lowStock || 0)}
+          note="Ingredients at or below reorder level"
           icon={Package}
         />
       </section>
@@ -478,34 +561,16 @@ function OverviewContent({
             <div>
               <p className="text-sm text-muted-foreground">Performance</p>
               <h2 className="mt-1 text-xl font-semibold tracking-tight">
-                Sales overview
+                Net sales · last 7 days
               </h2>
             </div>
-            <span className="rounded-lg bg-secondary px-3 py-1.5 text-xs font-medium">
-              This week
-            </span>
+            <span className="rounded-lg bg-secondary px-3 py-1.5 text-xs font-medium">{report.isFetching ? "Updating" : "Live report"}</span>
           </div>
-          <div
-            className="mt-7 flex h-48 items-end justify-between gap-2 border-b border-border px-1 sm:gap-4"
-            role="img"
-            aria-label="Weekly sales chart. No sales have been recorded yet."
-          >
-            {days.map((day) => (
-              <div
-                key={day}
-                className="flex h-full flex-1 flex-col items-center justify-end gap-2"
-              >
-                <span className="h-1.5 w-full max-w-12 rounded-t-md bg-primary/20" />
-                <span className="pb-2 text-[11px] text-muted-foreground">
-                  {day}
-                </span>
-              </div>
-            ))}
-          </div>
+          {report.isPending ? <div className="mt-7 h-48 animate-pulse rounded-xl bg-secondary/60" aria-busy="true" /> : report.isError ? <div role="alert" className="mt-6 rounded-xl border border-destructive/20 p-4 text-sm text-destructive">Sales trend is unavailable. <Button variant="outline" size="sm" className="ml-2" onClick={() => void report.refetch()}>Retry</Button></div> : daily.length ? <div className="mt-7 grid h-48 grid-cols-7 items-end gap-2 border-b border-border px-1 sm:gap-4" role="img" aria-label="Net sales by day for the last seven days">{daily.map((item) => <div key={item.date} className="flex h-full min-w-0 flex-col items-center justify-end gap-2"><span title={formatMoney(item.sales, currency)} className="w-full max-w-12 rounded-t-md bg-primary/75 transition-all" style={{ height: `${Math.max(3, (item.sales / chartMaximum) * 100)}%` }} /><span className="pb-2 text-[10px] text-muted-foreground sm:text-[11px]">{new Intl.DateTimeFormat("en", { weekday: "short" }).format(new Date(`${item.date.slice(0, 10)}T12:00:00`))}</span></div>)}</div> : <div className="mt-7 grid h-48 place-items-center rounded-xl border border-dashed text-sm text-muted-foreground">No completed sales in this period</div>}
           <div className="mt-4 flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">Net sales this week</span>
+            <span className="text-muted-foreground">Net sales · last 7 days</span>
             <span className="font-semibold">
-              {formatMoney(metrics.netSales, currency)}
+              {formatMoney(daily.reduce((sum, item) => sum + item.sales, 0), currency)}
             </span>
           </div>
         </article>
@@ -521,42 +586,46 @@ function OverviewContent({
           </div>
           <div className="mt-5 space-y-4">
             <HealthRow
-              label="Refunds today"
-              value={formatMoney(metrics.refunds, currency)}
+              label="Open orders"
+              value={String(metrics.openOrders ?? 0)}
             />
-            <HealthRow
-              label="Food cost"
-              value={
-                metrics.foodCostPercent === null
-                  ? "—"
-                  : `${metrics.foodCostPercent}%`
-              }
-            />
-            {role === "OWNER" ? (
+            {role === "OWNER" ? <>
+              <HealthRow label="Food cost" value={report.data?.summary.foodCostPercent === undefined ? "Not enough recipe cost data" : `${report.data.summary.foodCostPercent.toFixed(1)}%`} />
               <HealthRow
                 label="Gross profit"
-                value={metrics.profit === null ? "Enter ingredient costs" : formatMoney(metrics.profit, currency)}
+                value={report.data?.summary.profit === undefined ? "Not enough recipe cost data" : formatMoney(report.data.summary.profit, currency)}
               />
-            ) : null}
+            </> : null}
+            <HealthRow label="Refunds today" value={`${formatMoney(metrics.refunds, currency)} · ${todayReport.data?.summary.refundCount ?? "—"} refunds`} />
+            {dashboard.branches && dashboard.branches.length > 1 ? <HealthRow label="Branches" value={`${dashboard.branches.length} accessible`} /> : null}
           </div>
           <p className="mt-5 rounded-xl bg-secondary/75 px-3.5 py-3 text-xs leading-5 text-muted-foreground">
             {role === "MANAGER"
-              ? "Profit reporting is restricted to business owners."
-              : "Branch comparison and best sellers appear as sales data becomes available."}
+              ? "Profit and food-cost reporting are withheld unless your account has the corresponding permission."
+              : "Financial totals use completed orders and recorded refunds for your selected branch scope."}
           </p>
         </article>
       </section>
-      <section className="mt-5">
-        <EmptyPanel
-          icon={ClipboardList}
-          title="Your activity will show up here"
-          description="Orders, best sellers, payments and branch comparisons will appear once the point of sale and order workflows are connected."
-          tag="READY FOR POS DATA"
-        />
+      <section className="mt-5 grid gap-5 xl:grid-cols-2">
+        <article className="rounded-2xl border border-border/75 bg-card p-5 sm:p-6"><div className="flex items-center justify-between gap-3"><div><p className="text-sm text-muted-foreground">Product performance</p><h2 className="mt-1 text-xl font-semibold">Best sellers</h2></div><Utensils className="size-5 text-primary"/></div>{report.isPending ? <LoadingRowsDashboard/> : report.isError ? <p className="mt-4 text-sm text-muted-foreground">Best sellers are unavailable.</p> : report.data?.bestSellers.length ? <div className="mt-4 divide-y divide-border/70">{report.data.bestSellers.slice(0, 5).map((product, index) => <div key={product.id} className="flex items-center gap-3 py-3"><span className="grid size-8 shrink-0 place-items-center rounded-lg bg-secondary text-xs font-semibold">{index + 1}</span><span className="min-w-0 flex-1 truncate text-sm font-medium">{product.name}</span><span className="text-right text-xs text-muted-foreground">{product.quantity} sold<br/><strong className="text-foreground">{formatMoney(product.sales, currency)}</strong></span></div>)}</div> : <p className="mt-5 rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">No product sales in the selected period.</p>}</article>
+        <article className="rounded-2xl border border-border/75 bg-card p-5 sm:p-6"><div className="flex items-center justify-between gap-3"><div><p className="text-sm text-muted-foreground">Branch performance</p><h2 className="mt-1 text-xl font-semibold">Branch comparison</h2></div><Building2 className="size-5 text-primary"/></div>{role !== "OWNER" || !dashboard.branches || dashboard.branches.length < 2 ? <p className="mt-5 rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">Branch comparison is shown to Owners with multiple branches.</p> : <div className="mt-4 divide-y divide-border/70">{dashboard.branches.map((branch, index) => { const query = branchReports[index]; return <div key={branch.id} className="flex items-center justify-between gap-4 py-3"><span className="truncate text-sm font-medium">{branch.name}</span><span className="text-sm font-semibold tabular-nums">{query?.isPending ? "Loading…" : query?.isError ? "Unavailable" : formatMoney(query?.data?.summary.netSales ?? 0, currency)}</span></div>; })}</div>}</article>
       </section>
+      {role === "MANAGER" ? <section className="mt-5 grid gap-5 xl:grid-cols-2"><article className="rounded-2xl border border-border/75 bg-card p-5 sm:p-6"><div><p className="text-sm text-muted-foreground">Staffing signal</p><h2 className="mt-1 text-xl font-semibold">Hourly sales today</h2></div>{orders.isError ? <p className="mt-4 text-sm text-destructive">{getErrorMessage(orders.error)}</p> : orders.isPending ? <div className="mt-5 h-40 animate-pulse rounded-xl bg-secondary/60" aria-busy="true"/> : <div className="mt-5 grid h-40 items-end gap-1" style={{ gridTemplateColumns: "repeat(24,minmax(0,1fr))" }} aria-label="Hourly sales today">{hourlySales.map((slot) => <div key={slot.hour} className="flex h-full min-w-0 flex-col items-center justify-end gap-1"><span title={`${slot.orders} orders · ${formatMoney(slot.sales, currency)}`} className="w-full rounded-t bg-primary/75" style={{ height: `${slot.sales > 0 ? Math.max(5, slot.sales / hourlyMaximum * 100) : 2}%` }}/><span className="text-[8px] text-muted-foreground">{slot.hour % 3 === 0 ? String(slot.hour).padStart(2, "0") : ""}</span></div>)}</div>}<p className="mt-3 text-xs text-muted-foreground">{branchTimezone ? `Times shown in ${branchTimezone}.` : "Times use your local timezone when all branches are selected."}</p></article><article className="rounded-2xl border border-border/75 bg-card p-5 sm:p-6"><div className="flex items-center justify-between gap-3"><div><p className="text-sm text-muted-foreground">Service queue</p><h2 className="mt-1 text-xl font-semibold">Open orders</h2></div><span className="rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-semibold">{metrics.openOrders ?? 0}</span></div>{orders.isError ? <p className="mt-4 text-sm text-destructive">{getErrorMessage(orders.error)}</p> : openOrders.length ? <div className="mt-4 divide-y divide-border/70">{openOrders.map((order) => { const ageMinutes = Math.max(0, Math.floor((Date.now() - new Date(order.createdAt).getTime()) / 60_000)); return <div key={order.id} className="flex items-center justify-between gap-3 py-3"><div><p className="text-sm font-semibold">{order.table ? `Table ${order.table.name}` : `Order #${order.id.slice(-6).toUpperCase()}`}</p><p className="mt-1 text-xs text-muted-foreground">{ageMinutes} min · {order.createdBy.name}</p></div><span className="text-sm font-semibold">{formatMoney(order.totalAmount, currency)}</span></div>; })}</div> : !orders.isPending ? <p className="mt-5 text-sm text-muted-foreground">No open orders.</p> : <LoadingRowsDashboard/>}</article></section> : null}
+      {role === "MANAGER" ? <section className="mt-5 rounded-2xl border border-border/75 bg-card p-5 sm:p-6"><div className="flex items-center justify-between gap-3"><div><p className="text-sm text-muted-foreground">Order review</p><h2 className="mt-1 text-xl font-semibold">Refund and void activity</h2></div><CircleAlert className="size-5 text-primary"/></div><p className="mt-2 text-xs text-muted-foreground">Refunds and cancellations are recorded immediately in the current workflow; this list highlights recent activity for branch review.</p>{orders.isError ? <p role="alert" className="mt-4 text-sm text-destructive">{getErrorMessage(orders.error)}</p> : orders.isPending ? <LoadingRowsDashboard/> : (orders.data ?? []).filter((order) => ["PARTIALLY_REFUNDED", "REFUNDED", "CANCELLED"].includes(order.status)).slice(0, 5).length ? <div className="mt-3 divide-y divide-border/70">{(orders.data ?? []).filter((order) => ["PARTIALLY_REFUNDED", "REFUNDED", "CANCELLED"].includes(order.status)).slice(0, 5).map((order) => <div key={order.id} className="flex flex-wrap items-center justify-between gap-3 py-3"><span className="text-sm font-medium">{order.table ? `Table ${order.table.name}` : `Order #${order.id.slice(-6).toUpperCase()}`} · {order.status.replaceAll("_", " ")}</span><span className="text-xs text-muted-foreground">{new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(new Date(order.createdAt))}</span></div>)}</div> : <p className="mt-4 text-sm text-muted-foreground">No recent refunds or voids in the latest branch orders.</p>}</section> : null}
+      {lowStockRows.length ? <section className="mt-5 rounded-2xl border border-amber-500/25 bg-amber-500/[.035] p-5"><div className="flex items-center gap-3"><AlertTriangle className="size-5 text-amber-600"/><div><h2 className="font-semibold">Low stock attention</h2><p className="text-sm text-muted-foreground">{lowStockRows.slice(0, 4).map((row) => `${row.ingredient.name} (${row.quantity} ${row.ingredient.unit})`).join(" · ")}</p></div></div></section> : null}
+      {dashboard.shiftAlerts?.length ? <section className="mt-5 rounded-2xl border border-amber-500/25 bg-card p-5"><div className="flex items-center gap-3"><AlertTriangle className="size-5 text-amber-600"/><div><h2 className="font-semibold">Cash variances to review</h2><p className="text-sm text-muted-foreground">Recent closed shifts with a recorded drawer difference.</p></div></div><div className="mt-4 divide-y divide-border/70">{dashboard.shiftAlerts.slice(0, 5).map((shift) => <div key={shift.id} className="flex flex-wrap items-center justify-between gap-3 py-3"><span className="text-sm">{shift.user.name} · {shift.branch.name}{shift.closedAt ? ` · ${new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(shift.closedAt))}` : ""}</span><span className="text-sm font-semibold tabular-nums">{formatMoney(shift.cashVariance, currency)}</span></div>)}</div></section> : null}
+      {role === "OWNER" ? <section className="mt-5 grid gap-5 xl:grid-cols-2"><article className="rounded-2xl border border-border/75 bg-card p-5 sm:p-6"><div className="flex items-center justify-between gap-3"><div><p className="text-sm text-muted-foreground">Last 7 days</p><h2 className="mt-1 text-xl font-semibold">Payment mix</h2></div><CircleDollarSign className="size-5 text-primary"/></div>{report.isPending ? <LoadingRowsDashboard/> : report.isError ? <p className="mt-4 text-sm text-destructive">Payment summary unavailable.</p> : report.data?.paymentBreakdown.length ? <div className="mt-4 space-y-4">{report.data.paymentBreakdown.map((payment) => { const total = report.data!.paymentBreakdown.reduce((sum, item) => sum + item.amount, 0); const percent = total > 0 ? payment.amount / total * 100 : 0; return <div key={payment.method}><div className="mb-1.5 flex items-center justify-between gap-3 text-sm"><span>{payment.method.toLowerCase().replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase())}</span><span className="font-medium tabular-nums">{formatMoney(payment.amount, currency)} · {percent.toFixed(1)}%</span></div><div className="h-2 overflow-hidden rounded-full bg-secondary"><div className="h-full rounded-full bg-primary" style={{ width: `${percent}%` }}/></div></div>; })}</div> : <p className="mt-5 rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">Payments will appear after completed sales.</p>}</article><SetupNudge title="Recipe coverage" description="Add recipes and ingredient costs to unlock reliable food-cost and gross-profit reporting."/></section> : null}
     </>
   );
 }
+
+function dateKey(date: Date, timeZone?: string) {
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(date);
+  const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
+  return `${values.year}-${values.month}-${values.day}`;
+}
+function LoadingRowsDashboard() { return <div className="mt-4 space-y-3" aria-busy="true">{Array.from({ length: 4 }, (_, index) => <div key={index} className="h-12 animate-pulse rounded-lg bg-secondary/60"/>)}<span className="sr-only">Loading report data…</span></div>; }
+function SetupNudge({ title, description }: { title: string; description: string }) { return <article className="rounded-xl border border-border/75 bg-card p-4"><p className="text-sm font-semibold">{title}</p><p className="mt-1.5 text-xs leading-5 text-muted-foreground">{description}</p></article>; }
 
 function HealthRow({ label, value }: { label: string; value: string }) {
   return (
@@ -571,10 +640,12 @@ function PosContent({
   dashboard,
   role,
   actorId,
+  tableId,
 }: {
   dashboard: DashboardPayload;
   role: string;
   actorId: string;
+  tableId?: string;
 }) {
   const metrics = dashboard.metrics;
   const tenantId = dashboard.tenant?.id ?? "";
@@ -583,6 +654,7 @@ function PosContent({
   const queryClient = useQueryClient();
   const [cart, setCart] = useState<PosCartLine[]>([]);
   const [openOrderId, setOpenOrderId] = useState<string | null>(null);
+  const [waiterView, setWaiterView] = useState<"new-order" | "tables" | "recent-orders">("new-order");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [cashReceived, setCashReceived] = useState("");
@@ -608,7 +680,7 @@ function PosContent({
         const current = remaining[0];
         if (current.tenantId !== tenantId) break;
         try {
-          await createPosOrder(current.tenantId, current.branchId, current.items, current.clientOrderId);
+          await createPosOrder(current.tenantId, current.branchId, current.items, current.clientOrderId, undefined, true, current.createdAt);
           remaining.shift();
         } catch { break; }
       }
@@ -632,34 +704,57 @@ function PosContent({
     enabled: Boolean(tenantId && branchId),
     retry: false,
   });
+  const tableQuery = useQuery({ queryKey: ["dining-tables", tenantId, branchId], queryFn: () => listDiningTables(tenantId, branchId), enabled: Boolean(tenantId && branchId && (role === "WAITER" || tableId)), refetchInterval: 15_000, retry: false });
+  const readyItemsQuery = useQuery({ queryKey: ["ready-order-items", tenantId, branchId], queryFn: () => listReadyOrderItems(tenantId, branchId), enabled: Boolean(tenantId && branchId && role === "WAITER"), refetchInterval: 10_000, retry: false });
+  const selectedTable = tableId ? tableQuery.data?.find((table) => table.id === tableId) : undefined;
+  const currentOpenOrderId = openOrderId ?? selectedTable?.openOrder?.id ?? null;
   const createOrderMutation = useMutation({
-    mutationFn: (clientOrderId: string) => createPosOrder(tenantId, branchId, cart, clientOrderId),
+    mutationFn: (clientOrderId: string) => tableId && currentOpenOrderId ? appendPosOrderItems(tenantId, currentOpenOrderId, cart) : createPosOrder(tenantId, branchId, cart, clientOrderId, tableId),
     onSuccess: async (order) => {
       setError("");
-      if (role === "WAITER") {
+      if (role === "WAITER" && !tableId) {
         setOpenOrderId(null);
         setCart([]);
         setCashReceived("");
-        setMessage(`Order #${order.id.slice(0, 8).toUpperCase()} sent to the kitchen. A cashier can take payment when it is ready.`);
+        setMessage(`Order #${order.id.slice(-6).toUpperCase()} saved and sent to the kitchen. A cashier can take payment when it is ready.`);
+      } else if (role === "WAITER" && tableId && currentOpenOrderId) {
+        setCart([]);
+        setMessage("Items added to the table order. Send any new items to the kitchen when ready.");
+      } else if (role === "WAITER") {
+        setOpenOrderId(order.id);
+        setCart([]);
+        setMessage(`Order saved for table service. Send the ticket to the kitchen when you are ready.`);
       } else {
         setOpenOrderId(order.id);
         setMessage("Order saved. Complete it when payment and preparation are confirmed.");
       }
-      await queryClient.invalidateQueries({ queryKey: ["pos-orders", tenantId] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["pos-orders", tenantId] }),
+        queryClient.invalidateQueries({ queryKey: ["dining-tables", tenantId] }),
+      ]);
     },
     onError: (reason, clientOrderId) => {
       if (reason instanceof ApiError && reason.code === "NETWORK_ERROR") {
-        replaceOfflineOrderQueue(queueKey, (current) => [...current, { clientOrderId, tenantId, branchId, items: cart }]);
+        replaceOfflineOrderQueue(queueKey, (current) => [...current, { clientOrderId, tenantId, branchId, items: cart, createdAt: Date.now() }]);
         setCart([]);
         setError("");
         setMessage("Connection lost. This order is saved on this device and will sync when you reconnect.");
       } else setError(getErrorMessage(reason));
     },
   });
+  const sendKitchenMutation = useMutation({
+    mutationFn: () => sendOrderToKitchen(tenantId, currentOpenOrderId ?? ""),
+    onSuccess: async ({ items }) => {
+      setOpenOrderId(null);
+      setMessage(items.length ? `${items.length} item${items.length === 1 ? "" : "s"} sent to the kitchen.` : "There are no unsent items on this order.");
+      await Promise.all([queryClient.invalidateQueries({ queryKey: ["pos-orders", tenantId] }), queryClient.invalidateQueries({ queryKey: ["dining-tables", tenantId] }), queryClient.invalidateQueries({ queryKey: ["kitchen-queue", tenantId] })]);
+    },
+    onError: (reason) => setError(getErrorMessage(reason)),
+  });
   const completeOrderMutation = useMutation({
-    mutationFn: () => completePosOrder(tenantId, openOrderId ?? "", { method: "CASH", cashReceived: Number(cashReceived || cartTotal) }),
+    mutationFn: () => completePosOrder(tenantId, currentOpenOrderId ?? "", { method: "CASH", cashReceived: Number(cashReceived || cartTotal) }),
     onSuccess: async (order) => {
-      setReceipt({ id: order.id, items: cart.map((line) => ({ name: cartProduct(line.productId)?.name ?? "Item", quantity: line.quantity, unitPrice: Number(cartProduct(line.productId)?.price ?? 0) })), total: cartTotal });
+      setReceipt({ id: order.id, items: cart.map((line) => ({ name: cartProduct(line.productId)?.name ?? "Item", quantity: line.quantity, unitPrice: lineUnitPrice(line) })), total: cartTotal });
       setOpenOrderId(null);
       setCart([]);
       setCashReceived("");
@@ -668,6 +763,7 @@ function PosContent({
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["pos-orders", tenantId] }),
         queryClient.invalidateQueries({ queryKey: ["inventory", tenantId] }),
+        queryClient.invalidateQueries({ queryKey: ["dining-tables", tenantId] }),
         queryClient.invalidateQueries({ queryKey: ["dashboard"] }),
       ]);
     },
@@ -675,19 +771,42 @@ function PosContent({
   });
   const products = (menuQuery.data ?? []).filter((product) => product.isAvailable);
   const cartProduct = (productId: string) => products.find((product) => product.id === productId);
-  const cartTotal = cart.reduce((sum, line) => sum + Number(cartProduct(line.productId)?.price ?? 0) * line.quantity, 0);
-  function updateQuantity(product: MenuProduct, delta: number) {
+  const lineUnitPrice = (line: PosCartLine) => {
+    const product = cartProduct(line.productId);
+    const selectedOptionIds = line.optionIds ?? [];
+    const modifierDelta = product?.modifierGroups?.flatMap(({ group }) => group.options)
+      .filter((option) => selectedOptionIds.includes(option.id))
+      .reduce((sum, option) => sum + Number(option.priceDelta), 0) ?? 0;
+    return Number(product?.price ?? 0) + modifierDelta;
+  };
+  const cartTotal = cart.reduce((sum, line) => sum + lineUnitPrice(line) * line.quantity, 0);
+  function updateQuantity(product: MenuProduct, delta: number, optionIds?: string[]) {
     setCart((current) => {
-      const existing = current.find((line) => line.productId === product.id);
-      if (!existing && delta > 0) return [...current, { productId: product.id, quantity: 1 }];
-      return current
-        .map((line) => line.productId === product.id ? { ...line, quantity: line.quantity + delta } : line)
-        .filter((line) => line.quantity > 0);
+      if (delta < 0 && optionIds === undefined) {
+        const lastLineIndex = current.findLastIndex((line) => line.productId === product.id);
+        if (lastLineIndex < 0) return current;
+        return current.flatMap((line, index) => index !== lastLineIndex || line.quantity > 1
+          ? index === lastLineIndex ? [{ ...line, quantity: line.quantity - 1 }] : [line]
+          : []);
+      }
+      const normalizedOptions = [...(optionIds ?? [])].sort();
+      const existingIndex = current.findIndex((line) => line.productId === product.id &&
+        [...(line.optionIds ?? [])].sort().join("|") === normalizedOptions.join("|"));
+      if (existingIndex < 0 && delta > 0) return [...current, { productId: product.id, quantity: 1, optionIds: normalizedOptions }];
+      if (existingIndex < 0) return current;
+      return current.flatMap((line, index) => index !== existingIndex || line.quantity + delta > 0
+        ? index === existingIndex ? [{ ...line, quantity: line.quantity + delta }] : [line]
+        : []);
     });
   }
-  const pending = createOrderMutation.isPending || completeOrderMutation.isPending;
+  const pending = createOrderMutation.isPending || completeOrderMutation.isPending || sendKitchenMutation.isPending;
+  const diningTables = tableQuery.data ?? [];
+  const occupiedTables = diningTables.filter((table) => table.status === "OCCUPIED").length;
+  const availableTables = diningTables.filter((table) => table.status === "FREE").length;
+  const billRequestedTables = diningTables.filter((table) => table.status === "BILL_REQUESTED").length;
   const orderColumns: DataColumn<PosOrderRecord>[] = [
-    { id: "id", header: "Order", cell: (order) => <span className="font-mono text-xs font-semibold">#{order.id.slice(0, 8).toUpperCase()}</span>, accessorFn: (order) => order.id },
+    { id: "id", header: "Order", cell: (order) => <span className="font-mono text-xs font-semibold">#{order.id.slice(-6).toUpperCase()}</span>, accessorFn: (order) => order.id },
+    { id: "table", header: "Table", cell: (order) => order.table ? <span className="inline-flex rounded-full border border-primary/25 bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">Table {order.table.name}</span> : <span className="text-xs text-muted-foreground">Counter</span>, accessorFn: (order) => order.table?.name ?? "Counter" },
     { id: "items", header: "Items", cell: (order) => <span className="block max-w-64 truncate">{order.items.map((item) => `${item.quantity} × ${item.product.name}`).join(", ")}</span>, accessorFn: (order) => order.items.map((item) => item.product.name).join(" ") },
     { id: "createdBy", header: "Staff", cell: (order) => order.createdBy.name, accessorFn: (order) => order.createdBy.name },
     { id: "createdAt", header: "Created", cell: (order) => new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(new Date(order.createdAt)), accessorFn: (order) => new Date(order.createdAt).getTime() },
@@ -696,19 +815,42 @@ function PosContent({
   ];
   return (
     <>
-      <section className="grid gap-4 sm:grid-cols-3">
-        <MetricCard title={role === "WAITER" ? "My open orders" : "My sales today"} value={role === "WAITER" ? String((ordersQuery.data ?? []).filter((order) => order.createdBy.id === actorId && order.status === "OPEN").length) : formatMoney(metrics.ownSalesToday, currency)} note={role === "WAITER" ? "Orders you sent to the kitchen" : "Your completed sales this shift"} icon={Store} accent />
+      {role === "WAITER" ? <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricCard title="Active tables" value={tableQuery.isPending ? "—" : String(diningTables.length)} note="Tables in this branch" icon={Armchair} accent />
+        <MetricCard title="Occupied" value={tableQuery.isPending ? "—" : String(occupiedTables)} note="Currently serving guests" icon={Store} />
+        <MetricCard title="Available" value={tableQuery.isPending ? "—" : String(availableTables)} note="Ready to start an order" icon={ShoppingBag} />
+        <MetricCard title="Bill requested" value={tableQuery.isPending ? "—" : String(billRequestedTables)} note="Ready for checkout" icon={ReceiptText} />
+      </section> : <section className="grid gap-4 sm:grid-cols-3">
+        <MetricCard title="My sales today" value={formatMoney(metrics.ownSalesToday, currency)} note="Your completed sales today" icon={Store} accent />
         <MetricCard title="Orders today" value={String(metrics.ownOrdersToday ?? 0)} note="Orders you have handled" icon={ReceiptText} />
-        <MetricCard title="Shift status" value={String(metrics.shiftStatus ?? "NOT_STARTED").replaceAll("_", " ")} note="Current register session" icon={Clock3} />
-      </section>
-      <section className="mt-5 grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <MetricCard title="Shift status" value={cashierShift.isPending ? "Checking…" : cashierShift.data?.status ?? "NOT STARTED"} note={cashierShift.data ? `Opening ${formatMoney(cashierShift.data.openingCash, currency)} · expected ${formatMoney(Number(cashierShift.data.openingCash) + Number(cashierShift.data.expectedCash), currency)}` : "Open a register shift before cash sales"} icon={Clock3} />
+      </section>}
+      {role === "CASHIER" ? <section className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/75 bg-card p-4"><div><p className="text-sm font-semibold">Cash drawer</p><p className="mt-1 text-xs text-muted-foreground">{cashierShift.data ? `Opened ${new Intl.DateTimeFormat("en", { timeStyle: "short" }).format(new Date(cashierShift.data.openedAt))} · expected cash includes cash sales and movements.` : cashierShift.isError ? `Shift status unavailable: ${getErrorMessage(cashierShift.error)}` : "Start your shift to take cash payments."}</p></div><Button variant={cashierShift.data ? "outline" : "default"} render={<Link href={`/shift?tenantId=${tenantId}&branchId=${branchId}`}/>}><Clock3 className="size-4"/>{cashierShift.data ? "Review shift" : "Open shift"}</Button></section> : null}
+      {role === "WAITER" ? <section className="mt-4 rounded-2xl border border-emerald-500/25 bg-emerald-500/[.035] p-4"><div className="flex items-center justify-between gap-3"><div><p className="text-sm font-semibold">Ready to serve</p><p className="mt-1 text-xs text-muted-foreground">Kitchen-ready items for your branch</p></div><span className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold">{readyItemsQuery.data?.length ?? 0}</span></div>{readyItemsQuery.isError ? <div className="mt-3 flex items-center justify-between gap-3 text-sm"><span className="text-destructive">{getErrorMessage(readyItemsQuery.error)}</span><Button size="sm" variant="outline" onClick={() => void readyItemsQuery.refetch()}>Retry</Button></div> : readyItemsQuery.data?.length ? <ul className="mt-3 divide-y divide-border/70">{readyItemsQuery.data.slice(0, 5).map((item) => <li key={item.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5 text-sm"><span className="font-medium">{item.quantity} × {item.product.name}<span className="ml-2 font-normal text-muted-foreground">{item.order.table?.name ?? `Order #${item.order.id.slice(-6).toUpperCase()}`}</span></span><span className="text-xs text-muted-foreground">Ready</span></li>)}</ul> : !readyItemsQuery.isPending ? <p className="mt-3 text-sm text-muted-foreground">No ready items right now.</p> : <div className="mt-3 h-10 animate-pulse rounded-lg bg-secondary/60" aria-busy="true"/>}</section> : null}
+      {role === "WAITER" ? <div role="tablist" aria-label="Service workspace" className="mt-5 flex flex-wrap gap-2 rounded-2xl border border-border/70 bg-card p-2">
+        <Button type="button" role="tab" aria-selected={waiterView === "new-order"} variant={waiterView === "new-order" ? "default" : "ghost"} onClick={() => setWaiterView("new-order")}><Store aria-hidden />New order</Button>
+        <Button type="button" role="tab" aria-selected={waiterView === "tables"} variant={waiterView === "tables" ? "default" : "ghost"} onClick={() => setWaiterView("tables")}><Armchair aria-hidden />Tables</Button>
+        <Button type="button" role="tab" aria-selected={waiterView === "recent-orders"} variant={waiterView === "recent-orders" ? "default" : "ghost"} onClick={() => setWaiterView("recent-orders")}><ClipboardList aria-hidden />Recent orders</Button>
+      </div> : null}
+      {role === "WAITER" && tableQuery.isError ? <div role="alert" className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/25 bg-destructive/5 p-4 text-sm text-destructive"><span>Table status could not be loaded: {getErrorMessage(tableQuery.error)}</span><Button type="button" variant="outline" onClick={() => void tableQuery.refetch()}>Retry</Button></div> : null}
+      {role === "WAITER" && waiterView === "tables" ? <section className="mt-5 rounded-2xl border border-border/75 bg-card p-4 shadow-sm sm:p-6">
+        <div className="mb-5 flex flex-wrap items-end justify-between gap-3"><div><p className="text-sm text-muted-foreground">{dashboard.activeBranch?.name ?? "Selected branch"}</p><h2 className="mt-1 text-xl font-semibold">Service floor</h2><p className="mt-1 text-sm text-muted-foreground">Choose a table to open its order. Occupied tables show the current ticket and total.</p></div><span className="rounded-full bg-secondary px-3 py-1.5 text-xs font-semibold">{diningTables.length} active tables</span></div>
+        {tableQuery.isPending ? <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" aria-busy="true">{Array.from({ length: 6 }, (_, index) => <div key={index} className="h-36 animate-pulse rounded-xl bg-secondary/60" />)}</div> : diningTables.length ? <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{diningTables.map((table) => <article key={table.id} className={cn("rounded-xl border p-4", table.status === "FREE" ? "border-emerald-500/20 bg-emerald-500/[.035]" : table.status === "BILL_REQUESTED" ? "border-amber-500/25 bg-amber-500/[.04]" : "border-primary/25 bg-primary/[.035]")}>
+          <div className="flex items-start justify-between gap-3"><div><span className="inline-flex rounded-lg bg-primary/10 px-3 py-1.5 text-lg font-bold tracking-tight text-primary">{table.name}</span><p className="mt-2 text-sm font-medium">{table.section ?? "Dining area"}</p><p className="mt-0.5 text-xs text-muted-foreground">{table.seats} seats · {table.branch.name}</p></div><span className="rounded-full bg-background px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide">{table.status.replaceAll("_", " ")}</span></div>
+          {table.openOrder ? <div className="mt-4 flex items-end justify-between gap-3 border-t border-border/70 pt-3"><div><p className="text-xs text-muted-foreground">Current order</p><p className="mt-1 text-lg font-semibold tabular-nums">{formatMoney(Number(table.openOrder.totalAmount), currency)}</p></div><p className="text-right text-xs text-muted-foreground">Started by<br/><span className="font-medium text-foreground">{table.openOrder.createdBy.name}</span></p></div> : <p className="mt-4 border-t border-border/70 pt-3 text-xs text-muted-foreground">Available for new guests</p>}
+          <Button className="mt-4 w-full" variant={table.status === "FREE" ? "default" : "outline"} render={<Link href={`/pos?tenantId=${tenantId}&branchId=${branchId}&tableId=${table.id}`} />}>{table.status === "FREE" ? "Start table order" : table.status === "BILL_REQUESTED" ? "Review table bill" : "Open table order"}</Button>
+        </article>)}</div> : <div className="rounded-xl border border-dashed p-10 text-center"><Armchair className="mx-auto size-8 text-muted-foreground"/><h3 className="mt-3 font-semibold">No tables set up for this branch</h3><p className="mt-1 text-sm text-muted-foreground">Ask an Owner or Manager to add tables and service sections.</p></div>}
+      </section> : null}
+      {role === "WAITER" && waiterView === "recent-orders" ? <section className="mt-5 rounded-2xl border border-border/75 bg-card p-4 shadow-sm sm:p-6"><div className="mb-4"><p className="text-sm text-muted-foreground">{dashboard.activeBranch?.name ?? "Selected branch"}</p><h2 className="mt-1 text-xl font-semibold">Recent table orders</h2><p className="mt-1 text-sm text-muted-foreground">Table number, order status, and total stay visible while you serve.</p></div>{ordersQuery.isPending ? <div className="h-40 animate-pulse rounded-xl bg-secondary/60" aria-busy="true"/> : ordersQuery.isError ? <WorkspaceError message={getErrorMessage(ordersQuery.error)} error={ordersQuery.error} retry={() => void ordersQuery.refetch()}/> : <DataTable rows={ordersQuery.data ?? []} columns={orderColumns} getRowId={(order) => order.id} enableSearch searchPlaceholder="Search table, order or item…" empty={<p className="px-4 py-12 text-center text-sm text-muted-foreground">No orders have been opened for this branch yet.</p>}/>}</section> : null}
+      {(role !== "WAITER" || waiterView === "new-order") ? <section className="mt-5 grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
         <article className="rounded-2xl border border-border/75 bg-card p-5 sm:p-6">
           <div className="flex flex-wrap items-start justify-between gap-3">
-            <div><p className="text-sm text-muted-foreground">Service workspace</p><h2 className="mt-1 text-xl font-semibold">{role === "WAITER" ? "Table service menu" : "Register menu"}</h2></div>
+            <div><p className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">{tableId ? selectedTable ? <><span className="inline-flex rounded-md bg-primary/10 px-2 py-1 font-semibold text-primary">Dine-in · Table {selectedTable.name}</span>{selectedTable.section ? <span>· {selectedTable.section}</span> : null}</> : tableQuery.isPending ? "Loading selected table…" : "Selected table unavailable" : role === "WAITER" ? "Select a table to begin service" : "Counter service · no table selected"}</p><h2 className="mt-1 text-xl font-semibold">{role === "WAITER" ? "Table service menu" : "Register menu"}</h2></div>
             <span className="rounded-full bg-secondary px-3 py-1.5 text-xs font-medium">{dashboard.activeBranch?.name ?? "Choose a branch"}</span>
           </div>
+          {role === "WAITER" && !tableId ? <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed p-4"><p className="text-sm text-muted-foreground">Start from the service floor so every order is attached to the correct table and section.</p><Button size="sm" render={<Link href={`/tables?tenantId=${tenantId}&branchId=${branchId}`} />} disabled={!branchId}>Open tables</Button></div> : null}
           {menuQuery.isPending ? <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3" aria-busy="true">{Array.from({ length: 6 }, (_, index) => <div key={index} className="h-28 animate-pulse rounded-xl bg-secondary/70" />)}</div> : menuQuery.isError ? <WorkspaceError message={getErrorMessage(menuQuery.error)} error={menuQuery.error} retry={() => void menuQuery.refetch()} /> : products.length ? (
-            <ProductGrid products={products} cart={cart} currency={currency} disabled={Boolean(openOrderId) || pending} onQuantityChange={updateQuantity} />
+            <ProductGrid products={products} cart={cart} currency={currency} disabled={(role === "WAITER" && !tableId) || Boolean(currentOpenOrderId && !(role === "WAITER" && tableId)) || pending} onQuantityChange={updateQuantity} />
           ) : <EmptyPanel icon={ShoppingBag} title="No available products" description="Add and activate products in Menu to start taking orders." tag="MENU EMPTY" />}
         </article>
         <aside className="rounded-2xl border border-border/75 bg-card p-5 sm:p-6">
@@ -717,23 +859,29 @@ function PosContent({
           {message ? <p role="status" className="mt-4 rounded-lg border border-border bg-secondary/60 p-3 text-xs leading-5">{message}</p> : null}
           <div className="mt-5 space-y-3">{cart.length ? cart.map((line) => {
             const product = cartProduct(line.productId);
-            return product ? <div key={product.id} className="flex items-center justify-between gap-4 text-sm"><span className="min-w-0 truncate">{line.quantity} × {product.name}</span><span className="shrink-0 font-medium tabular-nums">{formatMoney(Number(product.price) * line.quantity, currency)}</span></div> : null;
+            const selectedOptionIds = line.optionIds ?? [];
+            const optionLabels = product?.modifierGroups?.flatMap(({ group }) => group.options)
+              .filter((option) => selectedOptionIds.includes(option.id)).map((option) => option.name) ?? [];
+            return product ? <div key={`${product.id}:${[...selectedOptionIds].sort().join(",")}`} className="flex items-start justify-between gap-4 text-sm"><span className="min-w-0">{line.quantity} × {product.name}{optionLabels.length ? <span className="mt-0.5 block text-xs text-muted-foreground">{optionLabels.join(" · ")}</span> : null}</span><span className="shrink-0 font-medium tabular-nums">{formatMoney(lineUnitPrice(line) * line.quantity, currency)}</span></div> : null;
           }) : <p className="rounded-lg border border-dashed border-border p-5 text-center text-sm text-muted-foreground">Choose menu items to begin an order.</p>}</div>
           <div className="mt-5 flex items-center justify-between border-t border-border pt-4"><span className="text-sm text-muted-foreground">Total</span><strong className="text-lg tabular-nums">{formatMoney(cartTotal, currency)}</strong></div>
           {role === "CASHIER" && !cashierShift.data ? <p className="mt-4 rounded-lg border border-amber-500/25 bg-amber-500/5 p-3 text-xs text-amber-800 dark:text-amber-300">{cashierShift.isError ? "Your open shift could not be verified. Retry the shift check before taking payment." : "Open your cash drawer shift before completing cash sales."} <a className="font-semibold underline" href={`/shift?tenantId=${tenantId}&branchId=${branchId}`}>Open shift</a></p> : null}
-          {openOrderId && role !== "WAITER" ? <div className="mt-4 space-y-2"><label htmlFor="cash-received" className="text-xs font-medium text-muted-foreground">Cash received</label><Input id="cash-received" inputMode="decimal" type="number" min={cartTotal} step="0.01" value={cashReceived} onChange={(event) => setCashReceived(event.target.value)} placeholder={cartTotal.toFixed(2)} /><p className="text-xs text-muted-foreground">Change due: {formatMoney(Math.max(0, Number(cashReceived || cartTotal) - cartTotal), currency)}</p></div> : null}
-          <Button className="mt-5 w-full" disabled={!branchId || !cart.length || pending || Boolean(openOrderId)} onClick={() => { setError(""); if (!navigator.onLine) { createOrderMutation.mutate(crypto.randomUUID()); return; } createOrderMutation.mutate(crypto.randomUUID()); }}>{createOrderMutation.isPending ? "Saving order…" : online ? "Save order" : "Queue order offline"}</Button>
-          {openOrderId && role !== "WAITER" ? <Button className="mt-2 w-full" variant="secondary" disabled={pending || (role === "CASHIER" && (!cashierShift.data || cashierShift.isError))} onClick={() => { setError(""); completeOrderMutation.mutate(); }}>{completeOrderMutation.isPending ? "Completing…" : "Take cash & complete order"}</Button> : null}
+          {currentOpenOrderId && role !== "WAITER" ? <div className="mt-4 space-y-2"><label htmlFor="cash-received" className="text-xs font-medium text-muted-foreground">Cash received</label><Input id="cash-received" inputMode="decimal" type="number" min={cartTotal} step="0.01" value={cashReceived} onChange={(event) => setCashReceived(event.target.value)} placeholder={cartTotal.toFixed(2)} /><p className="text-xs text-muted-foreground">Change due: {formatMoney(Math.max(0, Number(cashReceived || cartTotal) - cartTotal), currency)}</p></div> : null}
+          {tableId && tableQuery.isError ? <p role="alert" className="mt-3 text-xs text-destructive">The selected table could not be loaded. Return to Tables and open it again.</p> : null}
+          {tableId && !tableQuery.isPending && !tableQuery.isError && !selectedTable ? <p role="alert" className="mt-3 text-xs text-destructive">This table is not available at the selected branch. Return to Tables and choose a valid table.</p> : null}
+          {role === "WAITER" && !tableId ? <Button className="mt-5 w-full" render={<Link href={`/tables?tenantId=${tenantId}&branchId=${branchId}`} />} disabled={!branchId}>Choose a table to start</Button> : <Button className="mt-5 w-full" disabled={!branchId || !cart.length || pending || Boolean(tableId && (tableQuery.isPending || tableQuery.isError || !selectedTable)) || Boolean(currentOpenOrderId && !(role === "WAITER" && tableId))} onClick={() => { setError(""); if (!navigator.onLine) { createOrderMutation.mutate(crypto.randomUUID()); return; } createOrderMutation.mutate(crypto.randomUUID()); }}>{createOrderMutation.isPending ? "Saving order…" : tableId && currentOpenOrderId ? "Add items to order" : tableId ? "Save table order" : online ? "Save order" : "Queue order offline"}</Button>}
+          {currentOpenOrderId && role === "WAITER" ? <Button className="mt-2 w-full" variant="secondary" disabled={pending} onClick={() => { setError(""); sendKitchenMutation.mutate(); }}>{sendKitchenMutation.isPending ? "Sending ticket…" : "Send to kitchen"}</Button> : null}
+          {currentOpenOrderId && role !== "WAITER" ? <Button className="mt-2 w-full" variant="secondary" disabled={pending || (role === "CASHIER" && (!cashierShift.data || cashierShift.isError))} onClick={() => { setError(""); completeOrderMutation.mutate(); }}>{completeOrderMutation.isPending ? "Completing…" : "Take cash & complete order"}</Button> : null}
           {receipt ? <Button type="button" className="mt-2 w-full" variant="outline" onClick={() => window.print()}>Print receipt</Button> : null}
           {!branchId ? <p className="mt-3 text-xs text-destructive">Your account needs an assigned branch before it can create an order.</p> : null}
           <div className="mt-6 space-y-3 border-t border-border pt-5"><HealthRow label="Network sync" value={!online ? "Offline · queued" : offlineQueue.length ? `${offlineQueue.length} order(s) syncing` : "Online"} /><HealthRow label="Branch" value={dashboard.activeBranch?.name ?? "—"} /></div>
         </aside>
-      </section>
-      {receipt ? <article id="novara-pos-receipt" className="sr-only"><h1>Novara · {dashboard.tenant?.name}</h1><p>{dashboard.activeBranch?.name}</p><p>Receipt #{receipt.id.slice(0, 8).toUpperCase()}</p><p>{new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(new Date())}</p><hr/>{receipt.items.map((item, index) => <p key={`${item.name}-${index}`}>{item.quantity} × {item.name} — {formatMoney(item.unitPrice * item.quantity, currency)}</p>)}<hr/><strong>Total · {formatMoney(receipt.total, currency)}</strong><p>Thank you for visiting.</p></article> : null}
-      <section className="mt-5 overflow-hidden rounded-2xl border border-border/75 bg-card p-4 shadow-sm sm:p-6">
+      </section> : null}
+      {receipt ? <article id="novara-pos-receipt" className="sr-only"><h1>Novara · {dashboard.tenant?.name}</h1><p>{dashboard.activeBranch?.name}</p><p>Receipt #{receipt.id.slice(-6).toUpperCase()}</p><p>{new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(new Date())}</p><hr/>{receipt.items.map((item, index) => <p key={`${item.name}-${index}`}>{item.quantity} × {item.name} — {formatMoney(item.unitPrice * item.quantity, currency)}</p>)}<hr/><strong>Total · {formatMoney(receipt.total, currency)}</strong><p>Thank you for visiting.</p></article> : null}
+      {role !== "WAITER" ? <section className="mt-5 overflow-hidden rounded-2xl border border-border/75 bg-card p-4 shadow-sm sm:p-6">
         <div className="mb-4 flex flex-wrap items-end justify-between gap-3"><div><p className="text-sm text-muted-foreground">Service activity</p><h2 className="mt-1 text-lg font-semibold">Recent orders</h2></div><span className="rounded-full bg-secondary px-3 py-1.5 text-xs font-medium">{ordersQuery.data?.length ?? 0} in this branch</span></div>
         {ordersQuery.isPending ? <div className="h-40 animate-pulse rounded-xl bg-secondary/60" aria-busy="true" /> : ordersQuery.isError ? <WorkspaceError message={getErrorMessage(ordersQuery.error)} error={ordersQuery.error} retry={() => void ordersQuery.refetch()} /> : <DataTable rows={ordersQuery.data ?? []} columns={orderColumns} getRowId={(order) => order.id} enableSearch searchPlaceholder="Search order, product or staff…" empty={<div className="px-4 py-12 text-center"><p className="font-medium">No orders for this branch yet</p><p className="mt-1 text-sm text-muted-foreground">Orders created at this register will appear here.</p></div>} />}
-      </section>
+      </section> : null}
     </>
   );
 }
@@ -770,7 +918,7 @@ function KitchenContent({ dashboard }: { dashboard: DashboardPayload }) {
         icon={Check}
       />
       <div className="sm:col-span-3">
-        {orders.isPending ? <div className="h-48 animate-pulse rounded-2xl bg-secondary/60" aria-busy="true" /> : orders.isError ? <WorkspaceError message={getErrorMessage(orders.error)} error={orders.error} retry={() => void orders.refetch()} /> : tickets.length ? <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{tickets.map((order) => <article key={order.id} className="rounded-2xl border border-border/75 bg-card p-5"><div className="flex items-start justify-between gap-3"><div><p className="font-mono text-xs text-muted-foreground">#{order.id.slice(0, 8).toUpperCase()}</p><p className="mt-1 text-sm font-semibold">{order.branch.name}</p></div><span className={cn("rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase", order.kitchenStatus === "PENDING" ? "bg-amber-500/10 text-amber-800 dark:text-amber-300" : order.kitchenStatus === "READY" ? "bg-emerald-500/10 text-emerald-800 dark:text-emerald-300" : "bg-blue-500/10 text-blue-800 dark:text-blue-300")}>{order.kitchenStatus.toLowerCase()}</span></div><p className="mt-1 text-xs text-muted-foreground">Received {new Intl.DateTimeFormat("en", { timeStyle: "short" }).format(new Date(order.createdAt))}</p><ul className="my-4 space-y-2 border-y border-border py-4">{order.items.map((item) => <li key={item.id} className="flex justify-between gap-4 text-sm"><span>{item.product.name}</span><span className="font-semibold tabular-nums">× {item.quantity}</span></li>)}</ul>{order.kitchenStatus === "READY" ? <p role="status" className="rounded-lg bg-emerald-500/10 p-3 text-center text-sm font-medium text-emerald-800 dark:text-emerald-300">Ready to serve</p> : <Button className="w-full" disabled={update.isPending} onClick={() => update.mutate({ id: order.id, kitchenStatus: order.kitchenStatus === "PENDING" ? "PREPARING" : "READY" })}>{order.kitchenStatus === "PENDING" ? "Start preparing" : "Mark ready"}</Button>}</article>)}</div> : <EmptyPanel icon={ChefHat} title="Kitchen is all caught up" description="Incoming tickets refresh automatically and stay scoped to your assigned branch." tag="LIVE KITCHEN QUEUE" />}
+        {orders.isPending ? <div className="h-48 animate-pulse rounded-2xl bg-secondary/60" aria-busy="true" /> : orders.isError ? <WorkspaceError message={getErrorMessage(orders.error)} error={orders.error} retry={() => void orders.refetch()} /> : tickets.length ? <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{tickets.map((order) => <article key={order.id} className="rounded-2xl border border-border/75 bg-card p-5"><div className="flex items-start justify-between gap-3"><div><p className="font-mono text-xs text-muted-foreground">#{order.id.slice(-6).toUpperCase()}</p><p className="mt-1 text-sm font-semibold">{order.branch.name}</p></div><span className={cn("rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase", order.kitchenStatus === "PENDING" ? "bg-amber-500/10 text-amber-800 dark:text-amber-300" : order.kitchenStatus === "READY" ? "bg-emerald-500/10 text-emerald-800 dark:text-emerald-300" : "bg-blue-500/10 text-blue-800 dark:text-blue-300")}>{order.kitchenStatus.toLowerCase()}</span></div><p className="mt-1 text-xs text-muted-foreground">Received {new Intl.DateTimeFormat("en", { timeStyle: "short" }).format(new Date(order.createdAt))}</p><ul className="my-4 space-y-2 border-y border-border py-4">{order.items.map((item) => <li key={item.id} className="flex justify-between gap-4 text-sm"><span>{item.product.name}</span><span className="font-semibold tabular-nums">× {item.quantity}</span></li>)}</ul>{order.kitchenStatus === "READY" ? <p role="status" className="rounded-lg bg-emerald-500/10 p-3 text-center text-sm font-medium text-emerald-800 dark:text-emerald-300">Ready to serve</p> : <Button className="w-full" disabled={update.isPending} onClick={() => update.mutate({ id: order.id, kitchenStatus: order.kitchenStatus === "PENDING" ? "PREPARING" : "READY" })}>{order.kitchenStatus === "PENDING" ? "Start preparing" : "Mark ready"}</Button>}</article>)}</div> : <EmptyPanel icon={ChefHat} title="Kitchen is all caught up" description="Incoming tickets refresh automatically and stay scoped to your assigned branch." tag="LIVE KITCHEN QUEUE" />}
         {update.error ? <p role="alert" className="mt-4 rounded-xl border border-destructive/25 bg-destructive/5 p-3 text-sm text-destructive">{getErrorMessage(update.error)}</p> : null}
       </div>
     </div>
@@ -778,42 +926,51 @@ function KitchenContent({ dashboard }: { dashboard: DashboardPayload }) {
 }
 
 function InventoryContent({ dashboard }: { dashboard: DashboardPayload }) {
+  const tenantId = dashboard.tenant?.id ?? "";
+  const branchId = dashboard.activeBranch?.id;
+  const inventory = useQuery({ queryKey: ["reports", tenantId, "dashboard-inventory", branchId], queryFn: () => getInventoryReport(tenantId, branchId), enabled: Boolean(tenantId), staleTime: 30_000, retry: false });
+  const purchases = useQuery({ queryKey: ["purchases", tenantId, "dashboard"], queryFn: () => getPurchaseOrders(tenantId), enabled: Boolean(tenantId), staleTime: 30_000, retry: false });
+  const stocktakes = useQuery({ queryKey: ["stocktakes", tenantId, branchId, "dashboard"], queryFn: () => getStocktakes(tenantId, branchId), enabled: Boolean(tenantId), staleTime: 30_000, retry: false });
+  const movements = inventory.data?.movements ?? [];
+  const pendingPurchases = (purchases.data ?? []).filter((purchase) => purchase.status === "ORDERED" || purchase.status === "PARTIALLY_RECEIVED");
+  const waste = movements.filter((movement) => movement.type.toUpperCase().includes("WASTE"));
+  const activeStocktake = (stocktakes.data ?? []).find((stocktake) => stocktake.status === "DRAFT");
+  const movementTypeLabel = (type: string) => type.toLowerCase().replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
   return (
     <>
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard
           title="Low stock"
-          value="0"
-          note="Items below par level"
+          value={inventory.isPending ? "…" : String(inventory.data?.lowStock.length ?? 0)}
+          note="Ingredients at or below reorder level"
           icon={Package}
           accent
         />
         <MetricCard
           title="Recent movements"
-          value="0"
-          note="Stock changes this week"
+          value={inventory.isPending ? "…" : String(movements.length)}
+          note="Latest ledger entries"
           icon={Activity}
         />
         <MetricCard
           title="Pending purchases"
-          value="0"
-          note="Awaiting delivery"
+          value={purchases.isPending ? "…" : String(pendingPurchases.length)}
+          note="Ordered or partly received"
           icon={Truck}
         />
         <MetricCard
-          title="Waste log"
-          value="0"
-          note="Entries this month"
+          title="Waste this week"
+          value={inventory.isPending ? "…" : String(waste.length)}
+          note="Waste ledger entries in recent movements"
           icon={Boxes}
         />
       </section>
-      <div className="mt-5">
-        <EmptyPanel
-          icon={Package}
-          title="Inventory workspace is being prepared"
-          description={`Stock controls for ${dashboard.activeBranch?.name ?? "your branch"} will appear here. The MVP dashboard starts with the sales, POS and kitchen workflows.`}
-        />
-      </div>
+      {inventory.isError || purchases.isError || stocktakes.isError ? <section role="alert" className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/25 bg-destructive/5 p-4 text-sm"><span>{getErrorMessage(inventory.error ?? purchases.error ?? stocktakes.error)}</span><Button variant="outline" onClick={() => { void inventory.refetch(); void purchases.refetch(); void stocktakes.refetch(); }}>Retry</Button></section> : null}
+      <section className="mt-5 grid gap-5 xl:grid-cols-2">
+        <article className="rounded-2xl border border-border/75 bg-card p-5 sm:p-6"><div className="flex items-center justify-between gap-3"><div><p className="text-sm text-muted-foreground">Reorder attention</p><h2 className="mt-1 text-xl font-semibold">Low-stock ingredients</h2></div><Package className="size-5 text-primary"/></div>{inventory.isPending ? <LoadingRowsDashboard/> : inventory.data?.lowStock.length ? <div className="mt-4 divide-y divide-border/70">{inventory.data.lowStock.slice(0, 8).map((row) => <div key={row.id} className="flex items-center justify-between gap-4 py-3"><span className="min-w-0 truncate text-sm font-medium">{row.ingredient.name}<span className="ml-2 text-xs text-muted-foreground">{row.branch.name}</span></span><span className="shrink-0 text-right text-sm font-semibold tabular-nums">{row.quantity} <span className="text-xs font-normal text-muted-foreground">/ {row.reorderLevel} {row.ingredient.unit}</span></span></div>)}</div> : <div className="mt-4 rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">All tracked ingredients are above their reorder levels.</div>}</article>
+        <article className="rounded-2xl border border-border/75 bg-card p-5 sm:p-6"><div className="flex items-center justify-between gap-3"><div><p className="text-sm text-muted-foreground">Stock ledger</p><h2 className="mt-1 text-xl font-semibold">Recent movements</h2></div><Activity className="size-5 text-primary"/></div>{inventory.isPending ? <LoadingRowsDashboard/> : movements.length ? <div className="mt-4 divide-y divide-border/70">{movements.slice(0, 6).map((movement) => <div key={movement.id} className="flex items-center justify-between gap-3 py-3"><div className="min-w-0"><p className="truncate text-sm font-medium">{movement.ingredient.name}</p><p className="mt-1 text-xs text-muted-foreground">{movement.branch.name} · {movementTypeLabel(movement.type)} · {new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(movement.createdAt))}</p></div><span className="shrink-0 text-sm font-semibold tabular-nums">{movement.quantity} {movement.ingredient.unit}</span></div>)}</div> : <div className="mt-4 rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">Stock receipts, waste, adjustments and sales deductions will appear here.</div>}</article>
+      </section>
+      <section className="mt-5 grid gap-5 xl:grid-cols-2"><article className="rounded-2xl border border-border/75 bg-card p-5 sm:p-6"><div className="flex items-center justify-between gap-3"><div><p className="text-sm text-muted-foreground">Receiving</p><h2 className="mt-1 text-xl font-semibold">Open purchases</h2></div><Truck className="size-5 text-primary"/></div>{purchases.isPending ? <LoadingRowsDashboard/> : pendingPurchases.length ? <div className="mt-4 divide-y divide-border/70">{pendingPurchases.slice(0, 6).map((purchase) => <div key={purchase.id} className="flex items-center justify-between gap-3 py-3"><div><p className="text-sm font-medium">{purchase.supplier.name}</p><p className="mt-1 text-xs text-muted-foreground">{purchase.branch.name} · {purchase.status.replaceAll("_", " ")}</p></div><span className="text-sm font-semibold tabular-nums">{formatMoney(purchase.totalAmount, dashboard.tenant?.currency ?? "NPR")}</span></div>)}</div> : <div className="mt-4 rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">No purchases are waiting to be received.</div>}</article><article className="rounded-2xl border border-border/75 bg-card p-5 sm:p-6"><div className="flex items-center justify-between gap-3"><div><p className="text-sm text-muted-foreground">Counting</p><h2 className="mt-1 text-xl font-semibold">Stocktake</h2></div><ClipboardCheck className="size-5 text-primary"/></div>{stocktakes.isPending ? <div className="mt-4 h-20 animate-pulse rounded-xl bg-secondary/60" aria-busy="true"/> : activeStocktake ? <div className="mt-4 rounded-xl bg-secondary/60 p-4"><p className="font-medium">Count in progress</p><p className="mt-1 text-sm text-muted-foreground">Started {new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(activeStocktake.startedAt))} · {activeStocktake._count?.lines ?? activeStocktake.lines?.length ?? 0} items counted</p><Button className="mt-4" variant="outline" render={<Link href="/inventory/stocktakes"/>}>Continue stocktake</Button></div> : <div className="mt-4 rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">No count is in progress.</div>}</article></section>
     </>
   );
 }
@@ -896,7 +1053,6 @@ function RoleDashboardContent({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
-  const [logoutAction, setLogoutAction] = useState<ActionModel | null>(null);
   const loggedInUserQuery = useQuery({
     queryKey: authQueryKeys.loggedInUser,
     queryFn: authApi.getLoggedInUser,
@@ -1021,9 +1177,10 @@ function RoleDashboardContent({
             Your account is not assigned to a business workspace. Ask an owner
             to invite you, then sign in again.
           </p>
-          <Button className="mt-5" onClick={() => logoutMutation.mutate()}>
+          <Button className="mt-5" disabled={logoutMutation.isPending} onClick={() => logoutMutation.mutate()}>
             Sign out
           </Button>
+          {logoutMutation.error ? <p role="alert" className="mt-3 text-sm text-destructive">{getErrorMessage(logoutMutation.error)}</p> : null}
         </section>
       </main>
     );
@@ -1108,23 +1265,22 @@ function RoleDashboardContent({
         treatUnspecifiedAsReady={false}
         topContent={sidebarTopContent}
         footer={sidebarFooter}
-        showLogout={false}
       />
       <SidebarInset>
         <div className="min-w-0 flex-1">
           <header className="sticky top-0 z-30 flex h-[72px] items-center justify-between border-b border-border/60 bg-background/80 px-4 backdrop-blur-xl sm:px-7 xl:px-10">
-            <div className="flex min-w-0 items-center gap-3">
+            <div className="flex min-w-0 flex-1 items-center gap-3">
               <SidebarTrigger />
               <div className="min-w-0">
-                <p className="hidden text-[10px] font-semibold uppercase tracking-[.16em] text-muted-foreground sm:block">
-                  {dashboard.tenant?.name ?? "Novara control room"}
+                <p className="text-[10px] font-semibold uppercase tracking-[.16em] text-muted-foreground">
+                  {roleName(role)} workspace
                 </p>
                 <h1 className="truncate text-base font-semibold tracking-tight sm:text-lg">
                   {heading}
                 </h1>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex shrink-0 items-center gap-2">
               <WorkspaceSearch groups={[{ label: "Workspace", items: visibleNav }]} />
               <Button
                 variant="ghost"
@@ -1151,21 +1307,6 @@ function RoleDashboardContent({
                   </p>
                 </div>
               </div>
-              <Button
-                variant="ghost"
-                size="icon-lg"
-                aria-label="Sign out"
-                title="Sign out"
-                disabled={logoutMutation.isPending}
-                onClick={() =>
-                  setLogoutAction({
-                    kind: "LOGOUT",
-                    subject: loggedInUser.name,
-                  })
-                }
-              >
-                <LogOut className="size-[18px]" />
-              </Button>
             </div>
           </header>
           <main className="mx-auto w-full max-w-[1440px] p-4 pb-10 sm:p-7 xl:px-10 xl:py-8">
@@ -1193,18 +1334,10 @@ function RoleDashboardContent({
                 </button>
               </div>
             </div>
-            {logoutMutation.error ? (
-              <div
-                role="alert"
-                className="mb-4 rounded-xl border border-destructive/25 bg-destructive/5 p-3 text-sm text-destructive"
-              >
-                {getErrorMessage(logoutMutation.error)}
-              </div>
-            ) : null}
             {dashboard.view === "overview" ? (
               <OverviewContent dashboard={dashboard} role={role} />
             ) : dashboard.view === "pos" ? (
-              <PosContent key={`${dashboard.tenant?.id ?? "platform"}:${dashboard.activeBranch?.id ?? "default"}`} dashboard={dashboard} role={role} actorId={loggedInUser?.id ?? "anonymous"} />
+              <PosContent key={`${dashboard.tenant?.id ?? "platform"}:${dashboard.activeBranch?.id ?? "default"}:${searchParams.get("tableId") ?? "walk-in"}`} dashboard={dashboard} role={role} actorId={loggedInUser?.id ?? "anonymous"} tableId={searchParams.get("tableId") ?? undefined} />
             ) : dashboard.view === "kitchen" ? (
               <KitchenContent dashboard={dashboard} />
             ) : dashboard.view === "inventory" ? (
@@ -1224,22 +1357,6 @@ function RoleDashboardContent({
           </main>
         </div>
       </SidebarInset>
-      {logoutAction ? (
-        <ActionDialog
-          action={logoutAction}
-          open
-          pending={logoutMutation.isPending}
-          onOpenChange={(open) => {
-            if (!open) setLogoutAction(null);
-          }}
-          onConfirm={() => logoutMutation.mutate()}
-          error={
-            logoutMutation.error
-              ? getErrorMessage(logoutMutation.error)
-              : undefined
-          }
-        />
-      ) : null}
     </SidebarProvider>
   );
 }

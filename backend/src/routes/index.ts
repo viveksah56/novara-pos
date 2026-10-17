@@ -4,6 +4,7 @@ import { authRouter } from "@modules/auth/auth.routes.js";
 import { dashboardRouter } from "@modules/dashboard/dashboard.routes.js";
 import { platformRouter } from "@modules/platform/platform.routes.js";
 import { operationsRouter } from "@modules/operations/operations.routes.js";
+import { branchRouter, tenantRouter } from "@modules/tenancy/tenancy.routes.js";
 import { createOpenApiDocument } from "@lib/openapi.js";
 
 export const apiRouter = Router();
@@ -11,6 +12,9 @@ export const apiRouter = Router();
 apiRouter.use("/auth", authRouter);
 apiRouter.use("/dashboard", dashboardRouter);
 apiRouter.use("/platform", platformRouter);
+apiRouter.use("/branches", branchRouter);
+apiRouter.use("/tenants/:tenantId/branches", branchRouter);
+apiRouter.use("/tenants", tenantRouter);
 apiRouter.use("/tenants", operationsRouter);
 apiRouter.get("/openapi.json", (_request, response) => {
   response.setHeader("Cache-Control", "public, max-age=300");

@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -12,9 +11,48 @@ import { AuthPageFrame } from "@/features/auth/components/AuthPageFrame";
 import { authApi, authQueryKeys } from "@/features/auth/api";
 import { loginFormSchema, type LoginFormValues } from "@/features/auth/schemas";
 import { ApiError, getErrorMessage } from "@/lib/api-client";
+import { capabilityForPath, roleHasCapability, type BusinessRole, type PlatformRole } from "@/lib/rbac";
+
+function resolvePostLoginDestination(
+  requestedDestination: string | null,
+  session: { user: { platformRole?: PlatformRole | null; isPlatformAdmin?: boolean; memberships: Array<{ role: BusinessRole; tenant: { id: string } }> }; activeTenantId: string | null; homeRoute: string },
+): string {
+  const platformRole = session.user.platformRole ?? (session.user.isPlatformAdmin ? "PLATFORM_ADMIN" : undefined);
+  const membership = session.user.memberships.find(({ tenant }) => tenant.id === session.activeTenantId) ?? session.user.memberships[0];
+  const role: BusinessRole | PlatformRole | undefined = platformRole ?? membership?.role;
+
+  if (requestedDestination) {
+    try {
+      const target = new URL(requestedDestination, window.location.origin);
+      const pathname = target.pathname;
+      const isLocal = target.origin === window.location.origin && requestedDestination.startsWith("/") && !requestedDestination.startsWith("//");
+      const isAuthRoute = ["/login", "/register", "/forgot-password", "/reset-password", "/unauthorized"].includes(pathname);
+      const requestedTenantId = target.searchParams.get("tenantId");
+      const belongsToUser = !requestedTenantId || session.user.memberships.some(({ tenant }) => tenant.id === requestedTenantId);
+      const isPlatformRoute = pathname === "/admin" || pathname.startsWith("/admin/");
+      const canOpenPlatformRoute = Boolean(platformRole) && (platformRole !== "SUPPORT_AGENT" || pathname === "/admin/support" || pathname.startsWith("/admin/support/"));
+      const isRoleHome = pathname === "/dashboard" ? role === "OWNER" || role === "MANAGER" : false;
+      const capability = capabilityForPath(pathname);
+      const hasRouteAccess = isPlatformRoute
+        ? canOpenPlatformRoute
+        : isRoleHome || (capability !== undefined && roleHasCapability(role, capability));
+
+      if (isLocal && !isAuthRoute && belongsToUser && hasRouteAccess) {
+        return `${pathname}${target.search}${target.hash}`;
+      }
+    } catch {
+      // Ignore malformed, external, auth, and role-inaccessible return paths.
+    }
+  }
+
+  const homeRoute = session.homeRoute.startsWith("/") && !session.homeRoute.startsWith("//") ? session.homeRoute : "/login";
+  if (!session.activeTenantId || homeRoute.startsWith("/admin")) return homeRoute;
+  const destination = new URL(homeRoute, window.location.origin);
+  if (!destination.searchParams.has("tenantId")) destination.searchParams.set("tenantId", session.activeTenantId);
+  return `${destination.pathname}${destination.search}`;
+}
 
 export default function LoginPage() {
-  const router = useRouter();
   const queryClient = useQueryClient();
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginFormSchema),
@@ -22,12 +60,12 @@ export default function LoginPage() {
   });
   const loginMutation = useMutation({
     mutationFn: authApi.login,
-    onSuccess: (user) => {
-      queryClient.setQueryData(authQueryKeys.loggedInUser, user);
-      const returnTo = new URLSearchParams(window.location.search).get("returnTo");
-      const destination = returnTo?.startsWith("/") && !returnTo.startsWith("//") ? returnTo : "/dashboard";
-      router.replace(destination);
-      router.refresh();
+    onSuccess: (session) => {
+      queryClient.setQueryData(authQueryKeys.loggedInUser, session.user);
+      const params = new URLSearchParams(window.location.search);
+      const returnTo = params.get("returnTo") ?? params.get("next");
+      const destination = resolvePostLoginDestination(returnTo, session);
+      window.location.replace(destination);
     },
     onError: (error) => {
       if (!(error instanceof ApiError) || !error.details) return;
@@ -70,6 +108,9 @@ export default function LoginPage() {
           placeholder="Enter your password"
           error={form.formState.errors.password?.message}
         />
+        <div className="-mt-2 flex justify-end">
+          <Link href="/forgot-password" className="text-sm font-medium text-primary underline-offset-4 hover:underline">Forgot password?</Link>
+        </div>
         <Button className="h-11 w-full text-base" type="submit" disabled={loginMutation.isPending}>
           {loginMutation.isPending ? "Signing in…" : "Sign in"}
         </Button>

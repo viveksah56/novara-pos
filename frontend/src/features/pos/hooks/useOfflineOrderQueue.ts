@@ -3,7 +3,7 @@
 import { useCallback, useSyncExternalStore } from "react";
 import type { PosCartLine } from "@/features/pos/api/posApi";
 
-export type QueuedPosOrder = { clientOrderId: string; tenantId: string; branchId: string; items: PosCartLine[] };
+export type QueuedPosOrder = { clientOrderId: string; tenantId: string; branchId: string; items: PosCartLine[]; createdAt?: number };
 const EMPTY_QUEUE: QueuedPosOrder[] = [];
 const EVENT_NAME = "novara:offline-order-queue";
 const snapshots = new Map<string, { raw: string; value: QueuedPosOrder[] }>();

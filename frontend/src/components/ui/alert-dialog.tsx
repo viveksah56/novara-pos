@@ -4,13 +4,14 @@ import { AlertDialog as AlertDialogPrimitive } from "@base-ui/react/alert-dialog
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-export type ActionKind = "LOGOUT" | "DELETE_RECORD" | "DELETE_BUSINESS" | "SUSPEND_BUSINESS" | "RESTORE_BUSINESS" | "BULK_DELETE_BUSINESSES" | "BULK_SUSPEND_BUSINESSES" | "DELETE_PLAN" | "DEACTIVATE_PLAN" | "ACTIVATE_PLAN" | "REMOVE_SUPPORT_AGENT";
+export type ActionKind = "LOGOUT" | "DELETE_RECORD" | "DEACTIVATE_MEMBER" | "DELETE_BUSINESS" | "SUSPEND_BUSINESS" | "RESTORE_BUSINESS" | "BULK_DELETE_BUSINESSES" | "BULK_SUSPEND_BUSINESSES" | "DELETE_PLAN" | "DEACTIVATE_PLAN" | "ACTIVATE_PLAN" | "REMOVE_SUPPORT_AGENT";
 export type ActionModel = { kind: ActionKind; subject: string; resourceId?: string; resourceIds?: string[] };
 
 export function actionCopy(action: ActionModel) {
   switch (action.kind) {
     case "LOGOUT": return { title: "Sign out of Novara?", description: "You will need to sign in again to access your workspace.", confirm: "Sign out" };
     case "DELETE_RECORD": return { title: `Delete ${action.subject}?`, description: "This record will be permanently removed. This action cannot be undone.", confirm: "Delete record" };
+    case "DEACTIVATE_MEMBER": return { title: `Remove access for ${action.subject}?`, description: "Their business access will be disabled. Their historical orders and audit records will remain available, and an Owner or Manager can reactivate them later.", confirm: "Remove access" };
     case "DELETE_BUSINESS": return { title: `Delete ${action.subject}?`, description: "This permanently removes the business, its branches, and staff memberships. This action cannot be undone.", confirm: "Delete business" };
     case "SUSPEND_BUSINESS": return { title: `Suspend ${action.subject}?`, description: "Staff at this business will lose access until it is reactivated.", confirm: "Suspend business" };
     case "RESTORE_BUSINESS": return { title: `Reactivate ${action.subject}?`, description: "Business users will be able to sign in again.", confirm: "Reactivate business" };
@@ -32,7 +33,7 @@ export function ActionDialog({ action, open, pending, onOpenChange, onConfirm, e
   error?: string;
 }) {
   const copy = actionCopy(action);
-  const destructive = action.kind === "DELETE_RECORD" || action.kind === "DELETE_BUSINESS" || action.kind === "BULK_DELETE_BUSINESSES" || action.kind === "DELETE_PLAN" || action.kind === "LOGOUT" || action.kind === "REMOVE_SUPPORT_AGENT";
+  const destructive = action.kind === "DELETE_RECORD" || action.kind === "DEACTIVATE_MEMBER" || action.kind === "DELETE_BUSINESS" || action.kind === "BULK_DELETE_BUSINESSES" || action.kind === "DELETE_PLAN" || action.kind === "LOGOUT" || action.kind === "REMOVE_SUPPORT_AGENT";
   return <AlertDialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
     <AlertDialogPrimitive.Portal>
       <AlertDialogPrimitive.Backdrop className="fixed inset-0 z-[80] bg-black/45 backdrop-blur-[2px] transition-opacity data-[ending-style]:opacity-0 data-[starting-style]:opacity-0" />

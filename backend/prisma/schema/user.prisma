@@ -4,16 +4,30 @@ model User {
   email          String         @unique @db.VarChar(320)
   passwordHash   String         @db.VarChar(255)
   isActive       Boolean        @default(true)
+  failedLoginCount Int           @default(0)
+  lockedUntil     DateTime?
+  lastLoginAt     DateTime?
   emailVerifiedAt DateTime?
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
   memberships    Membership[]
   refreshTokens  RefreshToken[]
+  passwordResetTokens PasswordResetToken[]
+  auditLogs      AuditLog[]
   platformStaff  PlatformStaff?
   createdPlatformTickets PlatformTicket[] @relation("TicketCreator")
   stockMovements StockMovement[]
   salesOrders SalesOrder[] @relation("SalesOrderCreator")
   shifts Shift[]
+  createdPayments Payment[] @relation("PaymentCreator")
+  createdRefunds Refund[] @relation("RefundCreator")
+  approvedRefunds Refund[] @relation("RefundApprover")
+  sentTeamInvitations TeamInvitation[] @relation("TeamInvitationSender")
+  createdExpenses Expense[] @relation("ExpenseCreator")
+  voidedExpenses Expense[] @relation("ExpenseVoider")
+  createdCashMovements CashMovement[] @relation("CashMovementCreator")
+  createdStocktakes Stocktake[] @relation("StocktakeCreator")
+  approvedStocktakes Stocktake[] @relation("StocktakeApprover")
 
   @@index([isActive, createdAt])
 }

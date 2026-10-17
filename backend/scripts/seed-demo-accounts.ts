@@ -35,21 +35,21 @@ async function seedDemoAccounts(): Promise<void> {
   await prisma.$transaction(async (transaction) => {
     await transaction.tenant.upsert({
       where: { id: demoTenantId },
-      create: { id: demoTenantId, name: "Novara Demo Cafe", currency: "NPR" },
-      update: { name: "Novara Demo Cafe", currency: "NPR", status: "ACTIVE" },
+      create: { id: demoTenantId, name: "Novara Demo Cafe", slug: "novara-demo-cafe", currency: "NPR" },
+      update: { name: "Novara Demo Cafe", slug: "novara-demo-cafe", currency: "NPR", status: "ACTIVE" },
     });
 
     await transaction.branch.upsert({
       where: { id: demoBranchId },
-      create: { id: demoBranchId, tenantId: demoTenantId, name: "Demo Branch", timezone: "Asia/Kathmandu" },
-      update: { tenantId: demoTenantId, name: "Demo Branch", timezone: "Asia/Kathmandu" },
+      create: { id: demoBranchId, tenantId: demoTenantId, name: "Demo Branch", code: "DE", timezone: "Asia/Kathmandu" },
+      update: { tenantId: demoTenantId, name: "Demo Branch", code: "DE", timezone: "Asia/Kathmandu" },
     });
 
     for (const account of businessAccounts) {
       const user = await transaction.user.upsert({
         where: { id: account.id },
         create: { id: account.id, name: account.name, email: account.email, passwordHash },
-        update: { name: account.name, email: account.email, passwordHash, isActive: true },
+        update: { name: account.name, email: account.email, passwordHash, isActive: true, failedLoginCount: 0, lockedUntil: null },
         select: { id: true },
       });
       const membership = await transaction.membership.upsert({
@@ -72,7 +72,7 @@ async function seedDemoAccounts(): Promise<void> {
       const user = await transaction.user.upsert({
         where: { id: account.id },
         create: { id: account.id, name: account.name, email: account.email, passwordHash },
-        update: { name: account.name, email: account.email, passwordHash, isActive: true },
+        update: { name: account.name, email: account.email, passwordHash, isActive: true, failedLoginCount: 0, lockedUntil: null },
         select: { id: true },
       });
       await transaction.platformStaff.upsert({

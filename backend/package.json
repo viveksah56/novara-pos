@@ -10,6 +10,7 @@
     "typecheck": "prisma generate && tsc -p tsconfig.json --noEmit",
     "db:generate": "prisma generate",
     "db:seed:demo": "tsx scripts/seed-demo-accounts.ts",
+    "db:seed:sample": "tsx scripts/seed-demo-pos-data.ts",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "openapi:generate": "tsx scripts/generate-openapi.ts"

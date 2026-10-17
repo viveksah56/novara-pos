@@ -22,9 +22,9 @@ export default function RegisterPage() {
   });
   const registerMutation = useMutation({
     mutationFn: authApi.register,
-    onSuccess: (user) => {
-      queryClient.setQueryData(authQueryKeys.loggedInUser, user);
-      router.replace("/dashboard");
+    onSuccess: (session) => {
+      queryClient.setQueryData(authQueryKeys.loggedInUser, session.user);
+      router.replace(session.homeRoute);
       router.refresh();
     },
     onError: (error) => {

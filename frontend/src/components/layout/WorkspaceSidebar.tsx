@@ -2,8 +2,11 @@
 
 import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
+import { KeyRound, UserRound } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { Brand } from "@/components/Brand";
 import { LogoutButton } from "@/components/layout/LogoutButton";
+import { authApi, authQueryKeys } from "@/features/auth/api";
 import {
   Sidebar as SidebarPrimitive,
   SidebarContent,
@@ -50,11 +53,19 @@ export function WorkspaceSidebar({
   footer?: ReactNode;
   showLogout?: boolean;
 }) {
+  const profile = useQuery({
+    queryKey: authQueryKeys.loggedInUser,
+    queryFn: authApi.getLoggedInUser,
+    retry: false,
+  });
+  const userName = profile.data?.name?.trim() || "Signed-in user";
+  const initials = userName.split(/\s+/).map((part) => part[0]).slice(0, 2).join("").toUpperCase();
+
   return (
     <SidebarPrimitive>
       <SidebarHeader><Brand href={brandHref} /></SidebarHeader>
-      {topContent}
-      <SidebarContent className="space-y-2 py-3">
+      {topContent ? <div className="shrink-0">{topContent}</div> : null}
+      <SidebarContent className="space-y-2 py-4">
         {groups.map((group) => {
           const items = group.items.filter((item) =>
             item.allowed !== false && (!item.capability || roleHasCapability(role, item.capability)),
@@ -88,9 +99,26 @@ export function WorkspaceSidebar({
           );
         })}
       </SidebarContent>
-      <SidebarFooter>
+      <SidebarFooter className="space-y-3">
         {footer ?? <div className="truncate rounded-xl bg-sidebar-accent p-3 text-xs text-muted-foreground">{tenantName}</div>}
-        {showLogout ? <LogoutButton className="flex justify-end" /> : null}
+        <div className="flex min-w-0 items-center gap-3 rounded-xl border border-sidebar-border/80 bg-sidebar-accent/45 p-3">
+          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+            {initials || <UserRound aria-hidden className="size-4" />}
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-xs font-semibold text-sidebar-foreground">{userName}</p>
+            <p className="mt-0.5 truncate text-[10px] text-muted-foreground">{profile.data?.email ?? tenantName}</p>
+            <p className="mt-1 truncate text-[9px] font-semibold uppercase tracking-[.13em] text-muted-foreground">{role.replaceAll("_", " ")}</p>
+          </div>
+        </div>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton href="/change-password" icon={<KeyRound aria-hidden className="size-4" />}>
+              Change password
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+        {showLogout ? <LogoutButton className="w-full" /> : null}
       </SidebarFooter>
     </SidebarPrimitive>
   );

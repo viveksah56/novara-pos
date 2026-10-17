@@ -21,6 +21,7 @@ import {
   Pencil,
   Search,
   ShoppingBag,
+  Settings,
   Truck,
   Users,
   UtensilsCrossed,
@@ -28,11 +29,12 @@ import {
 } from "lucide-react";
 import { WorkspaceSidebar, type WorkspaceNavGroup } from "@/components/layout/WorkspaceSidebar";
 import { WorkspaceSearch } from "@/components/layout/WorkspaceSearch";
-import { LogoutButton } from "@/components/layout/LogoutButton";
 import { DataTable } from "@/components/data-table/DataTable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { SelectField } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ActionDialog, type ActionModel } from "@/components/ui/alert-dialog";
 import {
   SidebarInset,
@@ -178,14 +180,23 @@ export function OperationsConsolePage({
     { ingredientId: "", quantity: "" },
   ]);
   const [purchaseLines, setPurchaseLines] = useState([
-    { ingredientId: "", quantity: "", unitCost: "" },
+    { ingredientId: "", quantity: "", unit: "EACH", unitFactor: "1", unitCost: "" },
   ]);
+  const [receivingPurchase, setReceivingPurchase] = useState<Item | null>(null);
+  const [receivingQuantities, setReceivingQuantities] = useState<Record<string, string>>({});
   const [notice, setNotice] = useState("");
+  const [createdInviteUrl, setCreatedInviteUrl] = useState("");
   const [error, setError] = useState("");
   const branches = useQuery({
     queryKey: ["operations", activeTenantId, "branches"],
     queryFn: () => getRows(activeTenantId, "branches"),
     enabled: !!activeTenantId,
+  });
+  const pendingInvitationsQuery = useQuery({
+    queryKey: ["operations", activeTenantId, "team-invitations"],
+    queryFn: async () => (await apiRequest<{ invitations: { id: string; email: string; role: string; expiresAt: string; branches: { branchId: string; branch: { name: string } }[] }[] }>(apiClient.get(`/tenants/${activeTenantId}/team/invitations`))).invitations,
+    enabled: !!activeTenantId && module === "team",
+    retry: false,
   });
   const selectedBranchId =
     branchId || (branches.data?.[0]?.id as string | undefined) || "";
@@ -206,6 +217,11 @@ export function OperationsConsolePage({
   const suppliers = useSuppliers(activeTenantId, module === "purchases");
   const stock = useStock(activeTenantId, selectedBranchId, module === "inventory");
   const purchaseOrders = usePurchaseOrders(activeTenantId, module === "purchases");
+  const receiveMutation = useMutation({
+    mutationFn: () => receivePurchase(activeTenantId, String(receivingPurchase?.id ?? ""), Object.entries(receivingQuantities).filter(([, value]) => Number(value) > 0).map(([purchaseItemId, value]) => ({ purchaseItemId, quantity: Number(value) }))),
+    onSuccess: async () => { setReceivingPurchase(null); setError(""); setNotice("Delivery received. Stock quantities and weighted average costs were updated."); await Promise.all([queryClient.invalidateQueries({ queryKey: ["purchasing", activeTenantId] }), queryClient.invalidateQueries({ queryKey: ["inventory", activeTenantId] })]); },
+    onError: (reason) => setError(getErrorMessage(reason)),
+  });
   const rowsQuery = module === "inventory"
     ? { ...stock, data: stock.data?.stock as unknown as Item[] | undefined }
     : module === "purchases"
@@ -243,8 +259,8 @@ export function OperationsConsolePage({
                     }
                   : module === "team"
                     ? {
-                        email: form.email,
                         role: form.role || "CASHIER",
+                        ...(editingId ? {} : { email: form.email }),
                         branchIds: (form.branchIds || selectedBranchId)
                           .split(",")
                           .map((id) => id.trim())
@@ -269,6 +285,8 @@ export function OperationsConsolePage({
                               .map((line) => ({
                                 ingredientId: line.ingredientId,
                                 quantity: Number(line.quantity),
+                                unit: line.unit,
+                                unitFactor: Number(line.unitFactor || 1),
                                 unitCost: Number(line.unitCost || 0),
                               })),
                           }
@@ -299,23 +317,24 @@ export function OperationsConsolePage({
               : module === "purchases"
                 ? purchaseOrderFormSchema.parse(payload)
                 : payload;
-      const path = module === "inventory" ? `${url}/adjustments` : editingId ? `${url}/${editingId}` : url;
+      const path = module === "inventory" ? `${url}/adjustments` : module === "team" && !editingId ? `${url}/invitations` : editingId ? `${url}/${editingId}` : url;
       const response =
         module === "recipes"
           ? apiClient.put(path, validatedPayload)
           : editingId
             ? apiClient.patch(path, validatedPayload)
             : apiClient.post(path, validatedPayload);
-      return apiRequest(response);
+      return apiRequest<{ invitation?: { inviteUrl?: string } }>(response);
     },
-    onSuccess: async () => {
+    onSuccess: async (result) => {
       setForm({});
       setEditingId(null);
       setFormOpen(false);
       setRecipeLines([{ ingredientId: "", quantity: "" }]);
-      setPurchaseLines([{ ingredientId: "", quantity: "", unitCost: "" }]);
+      setPurchaseLines([{ ingredientId: "", quantity: "", unit: "EACH", unitFactor: "1", unitCost: "" }]);
       setError("");
-      setNotice(`${moduleTitles[module].replace(/s$/, "")} saved.`);
+      setNotice(module === "team" ? "Invitation created. The team member can accept it from their email." : `${moduleTitles[module].replace(/s$/, "")} saved.`);
+      setCreatedInviteUrl(result?.invitation?.inviteUrl ?? "");
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["operations", activeTenantId] }),
         queryClient.invalidateQueries({ queryKey: ["menu", activeTenantId] }),
@@ -338,6 +357,11 @@ export function OperationsConsolePage({
       await queryClient.invalidateQueries({ queryKey: ["operations", activeTenantId] });
       await queryClient.invalidateQueries({ queryKey: ["menu", activeTenantId] });
     },
+    onError: (reason) => setError(getErrorMessage(reason)),
+  });
+  const revokeInvitation = useMutation({
+    mutationFn: (invitationId: string) => apiRequest(apiClient.delete(`${resourceUrl(activeTenantId, "team")}/invitations/${invitationId}`)),
+    onSuccess: async () => { setNotice("Invitation revoked."); await queryClient.invalidateQueries({ queryKey: ["operations", activeTenantId, "team-invitations"] }); },
     onError: (reason) => setError(getErrorMessage(reason)),
   });
   const filteredRows = useMemo(
@@ -369,10 +393,12 @@ export function OperationsConsolePage({
     { label: "Menu", items: [
       { label: "Categories", href: "/menu/categories", icon: Coffee, allowed: canManageMenu },
       { label: "Products", href: "/menu/products", icon: UtensilsCrossed, allowed: canManageMenu },
+      { label: "Modifiers", href: "/menu/modifiers", icon: PackagePlus, allowed: canManageMenu },
       { label: "Recipes", href: "/inventory/recipes", icon: ChefHat, allowed: canManageMenu },
     ] },
     { label: "Inventory", items: [
       { label: "Inventory", href: "/inventory", icon: Boxes, capability: "inventory.read" },
+      { label: "Stocktakes", href: "/inventory/stocktakes", icon: ClipboardList, capability: "inventory.read" },
       { label: "Ingredients", href: "/inventory/ingredients", icon: Package, capability: "inventory.read" },
       { label: "Suppliers", href: "/inventory/suppliers", icon: Truck, capability: "inventory.read" },
       { label: "Purchases", href: "/inventory/purchases", icon: ShoppingBag, capability: "inventory.read" },
@@ -380,10 +406,12 @@ export function OperationsConsolePage({
     ] },
     { label: "Reports", items: [
       { label: "Sales reports", href: "/reports", icon: BarChart3, capability: "reports.sales.read" },
+      { label: "Expenses", href: "/expenses", icon: CreditCard, capability: "expenses.read" },
     ] },
     { label: "Business", items: [
       { label: "Team", href: "/team", icon: Users, allowed: ["OWNER", "MANAGER"].includes(activeRole) },
-      { label: "Branches", href: "/branches", icon: Building2, allowed: activeRole === "OWNER" },
+      { label: "Branches", href: "/settings/branches", icon: Building2, allowed: activeRole === "OWNER" },
+      { label: "Business settings", href: "/settings", icon: Settings, capability: "settings.read" },
       { label: "Help & feedback", href: "/feedback", icon: LifeBuoy },
     ] },
   ];
@@ -528,12 +556,13 @@ export function OperationsConsolePage({
     if (module === "team")
       return (
         <>
-          {field("email", "Account email", "email")}
+          {!editingId ? field("email", "Account email", "email") : null}
           {field(
             "role",
             "Role",
             "text",
             [
+              ...(activeMembership?.role === "OWNER" ? ["OWNER"] : []),
               "MANAGER",
               "CASHIER",
               "WAITER",
@@ -544,9 +573,23 @@ export function OperationsConsolePage({
               label: value.toLowerCase().replaceAll("_", " "),
             })),
           )}
+          <div className="space-y-2 sm:col-span-2">
+            <p className="text-sm font-medium">Branch access</p>
+            <div className="grid gap-2 rounded-xl border p-3 sm:grid-cols-2">
+              {(branches.data ?? []).map((branch) => {
+                const branchKey = String(branch.id);
+                const selected = (form.branchIds || selectedBranchId).split(",").filter(Boolean).includes(branchKey);
+                return <label key={branchKey} className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm"><Checkbox checked={selected} onCheckedChange={(checked) => setForm((current) => {
+                  const ids = new Set((current.branchIds || selectedBranchId).split(",").filter(Boolean));
+                  if (checked === true) ids.add(branchKey); else ids.delete(branchKey);
+                  return { ...current, branchIds: [...ids].join(",") };
+                })} />{String(branch.name)}</label>;
+              })}
+            </div>
+            {branches.isError ? <p className="text-xs text-destructive">{getErrorMessage(branches.error)}</p> : null}
+          </div>
           <p className="col-span-full text-xs leading-5 text-muted-foreground">
-            Assigns to the selected branch. This email must already have an
-            active Novara account.
+            {editingId ? "Branch access is replaced with the IDs listed above." : "Assigns to the selected branch. This email must already have an active Novara account."}
           </p>
         </>
       );
@@ -587,14 +630,17 @@ export function OperationsConsolePage({
           <div className="space-y-3 sm:col-span-2 xl:col-span-3">
             <p className="text-xs font-medium text-muted-foreground">Purchase items</p>
             {purchaseLines.map((line, index) => (
-              <div key={index} className="grid gap-3 sm:grid-cols-[1fr_140px_140px_auto]">
-                <SelectField required aria-label={`Purchase ingredient ${index + 1}`} value={line.ingredientId} onValueChange={(value) => setPurchaseLines((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, ingredientId: value } : item))} options={[{ value: "", label: "Select ingredient" }, ...(ingredients.data ?? []).map((item) => ({ value: String(item.id), label: String(item.name) }))]} />
+              <div key={index} className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_110px_130px_110px_130px_auto]">
+                <SelectField required aria-label={`Purchase ingredient ${index + 1}`} value={line.ingredientId} onValueChange={(value) => setPurchaseLines((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, ingredientId: value, unit: String(ingredients.data?.find((ingredient) => String(ingredient.id) === value)?.unit ?? item.unit) } : item))} options={[{ value: "", label: "Select ingredient" }, ...(ingredients.data ?? []).map((item) => ({ value: String(item.id), label: String(item.name) }))]} />
                 <Input required type="number" min="0.001" step="any" aria-label={`Quantity ${index + 1}`} placeholder="Quantity" value={line.quantity} onChange={(event) => setPurchaseLines((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, quantity: event.target.value } : item))} />
+                <SelectField aria-label={`Purchase unit ${index + 1}`} value={line.unit} onValueChange={(value) => setPurchaseLines((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, unit: value } : item))} options={["EACH", "GRAM", "KILOGRAM", "MILLILITER", "LITER", "OUNCE", "POUND"].map((unit) => ({ value: unit, label: unit.toLowerCase() }))} />
+                <Input required type="number" min="0.000001" step="any" aria-label={`Base units per purchase unit ${index + 1}`} title="Base units per purchase unit" placeholder="Base factor" value={line.unitFactor} onChange={(event) => setPurchaseLines((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, unitFactor: event.target.value } : item))} />
                 <Input required type="number" min="0" step="any" aria-label={`Unit cost ${index + 1}`} placeholder="Unit cost" value={line.unitCost} onChange={(event) => setPurchaseLines((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, unitCost: event.target.value } : item))} />
                 {purchaseLines.length > 1 ? <Button type="button" variant="outline" onClick={() => setPurchaseLines((current) => current.filter((_, itemIndex) => itemIndex !== index))}>Remove</Button> : null}
               </div>
             ))}
-            <Button type="button" variant="outline" onClick={() => setPurchaseLines((current) => [...current, { ingredientId: "", quantity: "", unitCost: "" }])}>Add item</Button>
+            <p className="text-[11px] leading-5 text-muted-foreground">Enter the conversion factor into the ingredient’s base unit. Example: 1 kg purchased for a gram-based ingredient uses factor 1,000.</p>
+            <Button type="button" variant="outline" onClick={() => setPurchaseLines((current) => [...current, { ingredientId: "", quantity: "", unit: "EACH", unitFactor: "1", unitCost: "" }])}>Add item</Button>
           </div>
         </>
       );
@@ -702,43 +748,31 @@ export function OperationsConsolePage({
           } catch (reason) { setError(getErrorMessage(reason)); }
         }}>Place order</Button>,
       );
-    if (module === "purchases" && row.status === "ORDERED")
+    if (module === "purchases" && ["ORDERED", "PARTIALLY_RECEIVED"].includes(String(row.status)))
       actions.push(
-        <Button key="receive" size="sm" variant="outline" onClick={async () => {
-          try {
-            await receivePurchase(activeTenantId, String(row.id));
-            await queryClient.invalidateQueries({ queryKey: ["purchasing", activeTenantId, "orders"] });
-            await queryClient.invalidateQueries({ queryKey: ["inventory", activeTenantId] });
-            setNotice("Purchase received and stock levels updated.");
-          } catch (reason) { setError(getErrorMessage(reason)); }
+        <Button key="receive" size="sm" variant="outline" onClick={() => {
+          const items = Array.isArray(row.items) ? row.items as Item[] : [];
+          setReceivingPurchase(row);
+          setReceivingQuantities(Object.fromEntries(items.map((item) => [String(item.id), String(Math.max(0, Number(item.quantity) - Number(item.receivedQuantity ?? 0)))])));
+          setError("");
         }}>
           <PackagePlus className="size-4" /> Receive
         </Button>,
       );
-    if (module === "team" && row.role !== "OWNER")
-      actions.push(
-        <Button
-          key="remove-access"
-          size="sm"
-          variant="outline"
-          onClick={async () => {
-            try {
-              await apiRequest(
-                apiClient.delete(
-                  `${resourceUrl(activeTenantId, module)}/${row.id}`,
-                ),
-              );
-              await queryClient.invalidateQueries({
-                queryKey: ["operations", activeTenantId],
-              });
-            } catch (error) {
-              setError(getErrorMessage(error));
-            }
-          }}
-        >
-          Remove access
-        </Button>
-      );
+    if (module === "team" && row.role !== "OWNER") {
+      if (row.isActive) {
+        actions.push(<Button key="edit-member" size="sm" variant="outline" onClick={() => {
+          setForm({ role: String(row.role), branchIds: Array.isArray(row.branchAssignments) ? row.branchAssignments.map((assignment) => String((assignment as Item).branchId)).join(",") : selectedBranchId });
+          setEditingId(String(row.id)); setFormOpen(true); setError(""); window.scrollTo({ top: 0, behavior: "smooth" });
+        }}><Pencil className="size-3.5" /> Edit access</Button>);
+        actions.push(<Button key="remove-access" size="sm" variant="outline" onClick={() => setDeleteAction({ kind: "DEACTIVATE_MEMBER", subject: String((row.user as Item | undefined)?.email ?? "this team member"), resourceId: String(row.id) })}>Remove access</Button>);
+      } else {
+        actions.push(<Button key="reactivate" size="sm" variant="outline" onClick={async () => {
+          try { await apiRequest(apiClient.post(`${resourceUrl(activeTenantId, module)}/${row.id}/reactivate`, {})); await queryClient.invalidateQueries({ queryKey: ["operations", activeTenantId] }); setNotice("Team member access restored."); }
+          catch (reason) { setError(getErrorMessage(reason)); }
+        }}>Reactivate</Button>);
+      }
+    }
     return actions.length ? <div className="flex justify-end gap-2">{actions}</div> : null;
   }
   if (profile.isPending)
@@ -761,6 +795,11 @@ export function OperationsConsolePage({
         </section>
       </main>
     );
+  const receivingItems = Array.isArray(receivingPurchase?.items) ? receivingPurchase.items as Item[] : [];
+  const validReceiveLines = receivingItems.filter((item) => {
+    const quantity = Number(receivingQuantities[String(item.id)] ?? 0);
+    return quantity > 0 && quantity <= Math.max(0, Number(item.quantity) - Number(item.receivedQuantity ?? 0));
+  });
   return (
     <SidebarProvider>
       <WorkspaceSidebar
@@ -785,7 +824,6 @@ export function OperationsConsolePage({
           <div className="flex items-center gap-2">
             <WorkspaceSearch groups={navGroups} />
             <ThemeToggle />
-            <LogoutButton />
             <span className="hidden text-xs text-muted-foreground sm:block">
               {profile.data?.name}
             </span>
@@ -845,6 +883,8 @@ export function OperationsConsolePage({
               {notice}
             </p>
           ) : null}
+          {createdInviteUrl ? <div className="mb-4 break-all rounded-xl border border-primary/25 bg-primary/5 p-3 text-sm"><p className="font-medium">Development invitation link</p><a className="mt-1 inline-block text-primary underline underline-offset-4" href={createdInviteUrl}>{createdInviteUrl}</a><p className="mt-1 text-xs text-muted-foreground">This link is shown locally when email delivery is not configured.</p></div> : null}
+          {module === "team" ? <section className="mb-5 rounded-2xl border border-border/75 bg-card p-4 sm:p-5"><div className="mb-3 flex items-center justify-between gap-3"><div><h3 className="font-semibold">Pending invitations</h3><p className="mt-1 text-xs text-muted-foreground">Invitations expire after seven days and can be revoked at any time.</p></div><span className="rounded-full bg-secondary px-2.5 py-1 text-xs">{pendingInvitationsQuery.data?.length ?? 0}</span></div>{pendingInvitationsQuery.isPending ? <div className="h-14 animate-pulse rounded-lg bg-secondary/60" /> : pendingInvitationsQuery.isError ? <div role="alert" className="text-sm text-destructive">{getErrorMessage(pendingInvitationsQuery.error)} <Button size="sm" variant="outline" onClick={() => void pendingInvitationsQuery.refetch()}>Retry</Button></div> : pendingInvitationsQuery.data?.length ? <div className="space-y-2">{pendingInvitationsQuery.data.map((invitation) => <div key={invitation.id} className="flex flex-col gap-3 rounded-xl border p-3 sm:flex-row sm:items-center sm:justify-between"><div className="min-w-0"><p className="truncate text-sm font-medium">{invitation.email}</p><p className="mt-1 text-xs capitalize text-muted-foreground">{invitation.role.toLowerCase().replaceAll("_", " ")} · {invitation.branches.map(({ branch }) => branch.name).join(", ")} · expires {new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(invitation.expiresAt))}</p></div><Button size="sm" variant="outline" disabled={revokeInvitation.isPending} onClick={() => revokeInvitation.mutate(invitation.id)}>Revoke</Button></div>)}</div> : <p className="rounded-lg border border-dashed p-5 text-center text-sm text-muted-foreground">No pending invitations.</p>}</section> : null}
           {error ? (
             <p
               role="alert"
@@ -944,6 +984,17 @@ export function OperationsConsolePage({
           </section>
         </main>
       </SidebarInset>
+      <Dialog open={Boolean(receivingPurchase)} onOpenChange={(open) => { if (!open && !receiveMutation.isPending) setReceivingPurchase(null); }}>
+        <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-2xl">
+          <DialogHeader><DialogTitle>Receive delivery</DialogTitle><DialogDescription>Enter the quantity received for each purchase line. You can record a partial delivery and receive the remainder later.</DialogDescription></DialogHeader>
+          <div className="space-y-3">{receivingItems.map((item) => {
+            const remaining = Math.max(0, Number(item.quantity) - Number(item.receivedQuantity ?? 0));
+            const ingredient = item.ingredient as Item | undefined;
+            return <div key={String(item.id)} className="grid items-center gap-3 rounded-xl border p-3 sm:grid-cols-[minmax(0,1fr)_110px_150px]"><div className="min-w-0"><p className="truncate text-sm font-medium">{String(ingredient?.name ?? "Ingredient")}</p><p className="mt-1 text-xs text-muted-foreground">Received {Number(item.receivedQuantity ?? 0)} of {Number(item.quantity)} {String(item.unit ?? ingredient?.unit ?? "units").toLowerCase()} · {remaining} remaining</p></div><Input type="number" min="0" max={remaining} step="any" aria-label={`Receive quantity for ${String(ingredient?.name ?? "ingredient")}`} value={receivingQuantities[String(item.id)] ?? "0"} onChange={(event) => setReceivingQuantities((current) => ({ ...current, [String(item.id)]: event.target.value }))} /><span className="text-xs text-muted-foreground">to receive now</span></div>;
+          })}</div>
+          <DialogFooter><Button type="button" variant="outline" disabled={receiveMutation.isPending} onClick={() => setReceivingPurchase(null)}>Cancel</Button><Button type="button" disabled={!validReceiveLines.length || receiveMutation.isPending} onClick={() => receiveMutation.mutate()}><PackagePlus aria-hidden />{receiveMutation.isPending ? "Receiving…" : `Receive ${validReceiveLines.length} line${validReceiveLines.length === 1 ? "" : "s"}`}</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
       {deleteAction ? (
         <ActionDialog
           action={deleteAction}

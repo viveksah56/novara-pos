@@ -40,6 +40,21 @@ function serviceUnavailable(): NextResponse {
 
 export async function proxy(request: NextRequest): Promise<NextResponse> {
   const { pathname } = request.nextUrl;
+
+  // Credentials must only be submitted in the login request body. Remove legacy
+  // credential query parameters before rendering the form or writing history.
+  if (pathname === "/login") {
+    if (request.nextUrl.searchParams.has("email") || request.nextUrl.searchParams.has("password")) {
+      const cleanUrl = request.nextUrl.clone();
+      cleanUrl.searchParams.delete("email");
+      cleanUrl.searchParams.delete("password");
+      return NextResponse.redirect(cleanUrl);
+    }
+
+    // The login page is public; do not run protected-route session checks here.
+    return NextResponse.next();
+  }
+
   const token = ACCESS_COOKIE_NAMES.map((name) => request.cookies.get(name)?.value).find(Boolean);
 
   if (!token) return redirectToLogin(request);
@@ -81,5 +96,5 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
 
 // Keep this list aligned with the protected route groups requested for Novara.
 export const config = {
-  matcher: ["/dashboard/:path*", "/pos/:path*", "/kitchen/:path*", "/orders/:path*", "/shift/:path*", "/reports/:path*", "/stock-reports/:path*"],
+  matcher: ["/login", "/dashboard/:path*", "/pos/:path*", "/kitchen/:path*", "/tables/:path*", "/orders/:path*", "/shift/:path*", "/reports/:path*", "/stock-reports/:path*", "/expenses/:path*", "/settings/:path*", "/branches/:path*", "/inventory/:path*", "/menu/:path*", "/team/:path*"],
 };

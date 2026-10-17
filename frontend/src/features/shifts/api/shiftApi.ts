@@ -12,6 +12,7 @@ export type CashShift = {
   closedAt: string | null;
   note: string | null;
   branch: { id: string; name: string };
+  cashMovements?: { id: string; type: "PAY_IN" | "PAY_OUT"; amount: string | number; note: string | null; createdAt: string; createdBy: { id: string; name: string } }[];
 };
 
 export async function getCurrentShift(tenantId: string, branchId?: string) {
@@ -25,4 +26,7 @@ export async function openShift(tenantId: string, input: { branchId: string; ope
 export async function closeShift(tenantId: string, shiftId: string, input: { closingCash: number; note?: string }) {
   const data = await apiRequest<{ shift: CashShift }>(apiClient.post(`/tenants/${tenantId}/shifts/${shiftId}/close`, input));
   return data.shift;
+}
+export async function createCashMovement(tenantId: string, shiftId: string, input: { type: "PAY_IN" | "PAY_OUT"; amount: number; reason: string }) {
+  return apiRequest<{ movement: NonNullable<CashShift["cashMovements"]>[number] }>(apiClient.post(`/tenants/${tenantId}/shifts/${shiftId}/cash-movements`, input));
 }

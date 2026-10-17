@@ -3,11 +3,11 @@ import { apiClient, apiRequest } from "@/lib/api-client";
 export type Supplier = { id: string; name: string; isActive: boolean; email: string | null; phone: string | null };
 export type PurchaseOrder = {
   id: string;
-  status: "DRAFT" | "ORDERED" | "RECEIVED" | "CANCELLED";
+  status: "DRAFT" | "ORDERED" | "PARTIALLY_RECEIVED" | "RECEIVED" | "CANCELLED";
   totalAmount: number | string;
   supplier: { id: string; name: string };
   branch: { id: string; name: string };
-  items: Array<{ id: string; quantity: number | string; unitCost: number | string; ingredient: { id: string; name: string } }>;
+  items: Array<{ id: string; quantity: number | string; receivedQuantity: number | string; unit: string; unitFactor: number | string; unitCost: number | string; ingredient: { id: string; name: string; unit?: string } }>;
 };
 
 export async function getSuppliers(tenantId: string): Promise<Supplier[]> {
@@ -20,8 +20,8 @@ export async function getPurchaseOrders(tenantId: string): Promise<PurchaseOrder
   return result.purchases;
 }
 
-export async function receivePurchase(tenantId: string, purchaseId: string): Promise<PurchaseOrder> {
-  const result = await apiRequest<{ purchase: PurchaseOrder }>(apiClient.post(`/tenants/${tenantId}/purchases/${purchaseId}/receive`, {}));
+export async function receivePurchase(tenantId: string, purchaseId: string, lines: { purchaseItemId: string; quantity: number }[]): Promise<PurchaseOrder> {
+  const result = await apiRequest<{ purchase: PurchaseOrder }>(apiClient.post(`/tenants/${tenantId}/purchases/${purchaseId}/receive`, { lines }));
   return result.purchase;
 }
 

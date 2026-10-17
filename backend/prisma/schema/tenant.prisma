@@ -6,25 +6,40 @@ enum TenantStatus {
 model Tenant {
   id          String       @id @default(uuid()) @db.Uuid
   name        String       @db.VarChar(160)
+  slug        String       @unique @db.VarChar(180)
   status      TenantStatus @default(ACTIVE)
   currency    String       @default("NPR") @db.VarChar(3)
+  legalName   String?      @db.VarChar(180)
+  phone       String?      @db.VarChar(40)
+  email       String?      @db.VarChar(320)
+  address     String?      @db.VarChar(500)
+  logoUrl     String?      @db.VarChar(1000)
   planId      String?      @db.Uuid
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
   branches    Branch[]
   memberships Membership[]
+  teamInvitations TeamInvitation[]
   plan        SubscriptionPlan? @relation(fields: [planId], references: [id], onDelete: SetNull)
   platformTickets PlatformTicket[]
   categories Category[]
   products Product[]
+  modifierGroups ModifierGroup[]
   ingredients Ingredient[]
   recipes Recipe[]
   suppliers Supplier[]
   stockLevels StockLevel[]
   purchases Purchase[]
   stockMovements StockMovement[]
+  stocktakes Stocktake[]
   salesOrders SalesOrder[]
+  diningTables DiningTable[]
   shifts Shift[]
+  payments Payment[]
+  refunds Refund[]
+  expenseCategories ExpenseCategory[]
+  expenses Expense[]
+  cashMovements CashMovement[]
   subscription Subscription?
 
   @@index([status, createdAt])
@@ -35,17 +50,43 @@ model Branch {
   id                 String              @id @default(uuid()) @db.Uuid
   tenantId           String              @db.Uuid
   name               String              @db.VarChar(120)
+  code               String              @db.VarChar(4)
+  address            String?             @db.VarChar(500)
+  phone              String?             @db.VarChar(40)
   timezone           String              @default("Asia/Kathmandu") @db.VarChar(64)
+  currency           String              @default("NPR") @db.VarChar(3)
+  taxRate            Decimal             @default(13) @db.Decimal(5, 2)
+  taxInclusive       Boolean             @default(false)
+  serviceChargeRate  Decimal             @default(0) @db.Decimal(5, 2)
+  taxRegistrationNumber String?          @db.VarChar(80)
+  receiptHeader      String?             @db.VarChar(500)
+  receiptFooter      String?             @db.VarChar(500)
+  businessDayStart   String              @default("04:00") @db.VarChar(5)
+  allowNegativeStock Boolean             @default(false)
+  requireShift       Boolean             @default(true)
+  requirePaymentReference Boolean        @default(false)
+  shiftVarianceTolerance Decimal         @default(0) @db.Decimal(10, 2)
+  cashierMaxDiscountPercent Decimal      @default(10) @db.Decimal(5, 2)
+  isActive           Boolean             @default(true)
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
   tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   branchAssignments BranchAssignment[]
+  teamInvitations TeamInvitationBranch[]
   stockLevels StockLevel[]
   purchases Purchase[]
   stockMovements StockMovement[]
+  stocktakes Stocktake[]
   salesOrders SalesOrder[]
+  diningTables DiningTable[]
   shifts Shift[]
+  payments Payment[]
+  refunds Refund[]
+  expenses Expense[]
+  cashMovements CashMovement[]
 
+  @@unique([tenantId, name])
+  @@unique([tenantId, code])
   @@unique([tenantId, id])
   @@index([tenantId, createdAt])
 }

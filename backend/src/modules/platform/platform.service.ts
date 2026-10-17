@@ -15,7 +15,7 @@ export async function getPlatformRole(userId: string): Promise<PlatformRole | nu
 }
 
 export async function getPlatformOverview() {
-  const [businesses, activeBusinesses, suspendedBusinesses, users, plans, unassignedBusinesses, recentBusinesses] = await Promise.all([
+  const [businesses, activeBusinesses, suspendedBusinesses, users, plans, unassignedBusinesses, recentBusinesses, subscriptions, trialsEndingSoon, pastDueSubscriptions] = await Promise.all([
     prisma.tenant.count(),
     prisma.tenant.count({ where: { status: "ACTIVE" } }),
     prisma.tenant.count({ where: { status: "SUSPENDED" } }),
@@ -23,8 +23,17 @@ export async function getPlatformOverview() {
     prisma.subscriptionPlan.count({ where: { isActive: true } }),
     prisma.tenant.count({ where: { planId: null } }),
     prisma.tenant.findMany({ take: 8, orderBy: { createdAt: "desc" }, select: businessSelect }),
+    prisma.subscription.findMany({ where: { status: "ACTIVE" }, select: { plan: { select: { priceMonthly: true, currency: true } } } }),
+    prisma.subscription.count({ where: { status: "TRIALING", trialEndsAt: { gte: new Date(), lte: new Date(Date.now() + 7 * 86_400_000) } } }),
+    prisma.subscription.count({ where: { status: "PAST_DUE" } }),
   ]);
-  return { metrics: { businesses, activeBusinesses, suspendedBusinesses, users, activePlans: plans, unassignedBusinesses }, recentBusinesses };
+  const revenueByCurrency = new Map<string, number>();
+  for (const subscription of subscriptions) {
+    const currency = subscription.plan.currency;
+    revenueByCurrency.set(currency, (revenueByCurrency.get(currency) ?? 0) + Number(subscription.plan.priceMonthly));
+  }
+  const monthlyRecurringRevenue = [...revenueByCurrency].map(([currency, amount]) => ({ currency, amount }));
+  return { metrics: { businesses, activeBusinesses, suspendedBusinesses, users, activePlans: plans, unassignedBusinesses, trialsEndingSoon, pastDueSubscriptions, monthlyRecurringRevenue }, recentBusinesses };
 }
 
 const businessSelect = {
@@ -173,8 +182,8 @@ const ticketSelect = {
 
 export async function createPlatformTicket(userId: string, input: { tenantId?: string; type: "COMPLAINT" | "FEEDBACK" | "SUPPORT"; subject: string; message: string }) {
   if (input.tenantId) {
-    const membership = await prisma.membership.findUnique({ where: { tenantId_userId: { tenantId: input.tenantId, userId } }, select: { id: true } });
-    if (!membership) throw new HttpError(403, "TENANT_ACCESS_DENIED", "You cannot submit a ticket for this business.");
+    const membership = await prisma.membership.findUnique({ where: { tenantId_userId: { tenantId: input.tenantId, userId } }, select: { id: true, isActive: true } });
+    if (!membership?.isActive) throw new HttpError(403, "TENANT_ACCESS_DENIED", "You cannot submit a ticket for this business.");
   }
   return prisma.platformTicket.create({ data: { ...input, createdById: userId }, select: ticketSelect });
 }
@@ -184,16 +193,16 @@ export async function listMyPlatformTickets(userId: string) {
 }
 
 export async function listTenantComplaints(userId: string, tenantId: string) {
-  const membership = await prisma.membership.findUnique({ where: { tenantId_userId: { tenantId, userId } }, select: { role: true } });
-  if (!membership || !["OWNER", "MANAGER"].includes(membership.role)) {
+  const membership = await prisma.membership.findUnique({ where: { tenantId_userId: { tenantId, userId } }, select: { role: true, isActive: true } });
+  if (!membership?.isActive || !["OWNER", "MANAGER"].includes(membership.role)) {
     throw new HttpError(403, "ROLE_FORBIDDEN", "Only a business Owner or Manager can review its complaints.");
   }
   return prisma.platformTicket.findMany({ where: { tenantId, type: "COMPLAINT" }, orderBy: [{ status: "asc" }, { createdAt: "asc" }], take: 100, select: ticketSelect });
 }
 
 export async function updateTenantComplaint(userId: string, tenantId: string, ticketId: string, input: { status: "OPEN" | "IN_PROGRESS" | "RESOLVED" | "CLOSED" }) {
-  const membership = await prisma.membership.findUnique({ where: { tenantId_userId: { tenantId, userId } }, select: { role: true } });
-  if (!membership || !["OWNER", "MANAGER"].includes(membership.role)) {
+  const membership = await prisma.membership.findUnique({ where: { tenantId_userId: { tenantId, userId } }, select: { role: true, isActive: true } });
+  if (!membership?.isActive || !["OWNER", "MANAGER"].includes(membership.role)) {
     throw new HttpError(403, "ROLE_FORBIDDEN", "Only a business Owner or Manager can update its complaints.");
   }
   const result = await prisma.platformTicket.updateMany({ where: { id: ticketId, tenantId, type: "COMPLAINT" }, data: input });

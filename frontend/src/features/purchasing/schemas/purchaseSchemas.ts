@@ -16,6 +16,8 @@ export const purchaseOrderFormSchema = z.object({
   items: z.array(z.object({
     ingredientId: z.string().uuid(),
     quantity: z.coerce.number().positive(),
+    unit: z.enum(["EACH", "GRAM", "KILOGRAM", "MILLILITER", "LITER", "OUNCE", "POUND"]),
+    unitFactor: z.coerce.number().positive(),
     unitCost: z.coerce.number().min(0),
   })).min(1).max(100),
 });

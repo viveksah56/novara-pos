@@ -11,7 +11,15 @@ enum MeasureUnit {
 enum PurchaseStatus {
   DRAFT
   ORDERED
+  PARTIALLY_RECEIVED
   RECEIVED
+  CANCELLED
+}
+
+enum StocktakeStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
   CANCELLED
 }
 
@@ -20,11 +28,15 @@ enum StockMovementType {
   WASTE
   ADJUSTMENT
   RECIPE_USAGE
+  REFUND_RESTOCK
+  STOCKTAKE
 }
 
 enum SalesOrderStatus {
   OPEN
   COMPLETED
+  PARTIALLY_REFUNDED
+  REFUNDED
   CANCELLED
 }
 
@@ -34,9 +46,18 @@ enum KitchenOrderStatus {
   READY
 }
 
+enum KitchenItemStatus {
+  NEW
+  PREPARING
+  READY
+  SERVED
+}
+
 enum PaymentMethod {
   CASH
   CARD
+  BANK_TRANSFER
+  DIGITAL_WALLET
   OTHER
 }
 
@@ -70,10 +91,57 @@ model Product {
   category    Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   recipe      Recipe?
   orderItems  SalesOrderItem[]
+  modifierGroups ProductModifierGroup[]
 
   @@unique([tenantId, sku])
   @@index([tenantId, categoryId, isAvailable])
   @@index([tenantId, name])
+}
+
+model ModifierGroup {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @db.Uuid
+  name      String   @db.VarChar(120)
+  minSelect Int      @default(0)
+  maxSelect Int      @default(1)
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  options   ModifierOption[]
+  products  ProductModifierGroup[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId, isActive, sortOrder])
+}
+
+model ProductModifierGroup {
+  id        String        @id @default(uuid()) @db.Uuid
+  productId String        @db.Uuid
+  groupId   String        @db.Uuid
+  sortOrder Int           @default(0)
+  product   Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  group     ModifierGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, groupId])
+  @@index([groupId, sortOrder])
+}
+
+model ModifierOption {
+  id            String   @id @default(uuid()) @db.Uuid
+  groupId       String   @db.Uuid
+  name          String   @db.VarChar(120)
+  priceDelta    Decimal  @default(0) @db.Decimal(10, 2)
+  isDefault     Boolean  @default(false)
+  isActive      Boolean  @default(true)
+  sortOrder     Int      @default(0)
+  group         ModifierGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  recipeEffects ModifierOptionRecipeItem[]
+  orderSnapshots SalesOrderItemModifier[]
+
+  @@unique([groupId, name])
+  @@index([groupId, isActive, sortOrder])
 }
 
 model Ingredient {
@@ -90,6 +158,9 @@ model Ingredient {
   stockLevels  StockLevel[]
   purchaseLines PurchaseItem[]
   movements    StockMovement[]
+  modifierEffects ModifierOptionRecipeItem[]
+  modifierEffectSnapshots SalesOrderItemModifierEffect[]
+  stocktakeLines StocktakeLine[]
 
   @@unique([tenantId, name])
   @@index([tenantId, isActive, name])
@@ -121,6 +192,18 @@ model RecipeIngredient {
   @@index([ingredientId])
 }
 
+model ModifierOptionRecipeItem {
+  id           String         @id @default(uuid()) @db.Uuid
+  optionId     String         @db.Uuid
+  ingredientId String         @db.Uuid
+  quantityDelta Decimal       @db.Decimal(12, 3)
+  option       ModifierOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  ingredient   Ingredient     @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+
+  @@unique([optionId, ingredientId])
+  @@index([ingredientId])
+}
+
 model Supplier {
   id        String     @id @default(uuid()) @db.Uuid
   tenantId  String     @db.Uuid
@@ -144,6 +227,7 @@ model StockLevel {
   branchId      String     @db.Uuid
   ingredientId  String     @db.Uuid
   quantity      Decimal    @default(0) @db.Decimal(12, 3)
+  averageCost   Decimal    @default(0) @db.Decimal(12, 4)
   reorderLevel  Decimal    @default(0) @db.Decimal(12, 3)
   updatedAt     DateTime   @updatedAt
   tenant        Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -152,6 +236,43 @@ model StockLevel {
 
   @@unique([branchId, ingredientId])
   @@index([tenantId, branchId, quantity])
+}
+
+model Stocktake {
+  id           String          @id @default(uuid()) @db.Uuid
+  tenantId     String          @db.Uuid
+  branchId     String          @db.Uuid
+  status       StocktakeStatus @default(DRAFT)
+  startedAt    DateTime        @default(now())
+  submittedAt  DateTime?
+  approvedAt   DateTime?
+  createdById  String          @db.Uuid
+  approvedById String?         @db.Uuid
+  note         String?         @db.VarChar(500)
+  tenant       Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch       Branch          @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  createdBy    User            @relation("StocktakeCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  approvedBy   User?           @relation("StocktakeApprover", fields: [approvedById], references: [id], onDelete: Restrict)
+  lines        StocktakeLine[]
+  movements    StockMovement[]
+
+  @@index([tenantId, branchId, status, startedAt])
+}
+
+model StocktakeLine {
+  id              String    @id @default(uuid()) @db.Uuid
+  stocktakeId     String    @db.Uuid
+  ingredientId    String    @db.Uuid
+  countedQuantity Decimal   @db.Decimal(12, 3)
+  countedAt       DateTime  @default(now())
+  expectedAtCount Decimal?  @db.Decimal(12, 3)
+  variance        Decimal?  @db.Decimal(12, 3)
+  unitCost        Decimal?  @db.Decimal(10, 4)
+  stocktake       Stocktake @relation(fields: [stocktakeId], references: [id], onDelete: Cascade)
+  ingredient      Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Restrict)
+
+  @@unique([stocktakeId, ingredientId])
+  @@index([ingredientId, countedAt])
 }
 
 model Purchase {
@@ -178,13 +299,16 @@ model Purchase {
 }
 
 model PurchaseItem {
-  id           String     @id @default(uuid()) @db.Uuid
-  purchaseId   String     @db.Uuid
-  ingredientId String     @db.Uuid
-  quantity     Decimal    @db.Decimal(12, 3)
-  unitCost     Decimal    @db.Decimal(10, 2)
-  purchase     Purchase   @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
-  ingredient   Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Restrict)
+  id               String     @id @default(uuid()) @db.Uuid
+  purchaseId       String     @db.Uuid
+  ingredientId     String     @db.Uuid
+  quantity         Decimal    @db.Decimal(12, 3)
+  receivedQuantity Decimal    @default(0) @db.Decimal(12, 3)
+  unit             MeasureUnit @default(EACH)
+  unitFactor       Decimal    @default(1) @db.Decimal(12, 6)
+  unitCost         Decimal    @db.Decimal(10, 2)
+  purchase         Purchase   @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  ingredient       Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Restrict)
 
   @@unique([purchaseId, ingredientId])
 }
@@ -196,6 +320,7 @@ model StockMovement {
   ingredientId String            @db.Uuid
   purchaseId   String?           @db.Uuid
   salesOrderId String?           @db.Uuid
+  stocktakeId  String?           @db.Uuid
   type         StockMovementType
   quantity     Decimal           @db.Decimal(12, 3)
   note         String?           @db.VarChar(500)
@@ -206,20 +331,32 @@ model StockMovement {
   ingredient   Ingredient        @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
   purchase     Purchase?         @relation(fields: [purchaseId], references: [id], onDelete: SetNull)
   salesOrder   SalesOrder?       @relation(fields: [salesOrderId], references: [id], onDelete: SetNull)
+  stocktake    Stocktake?        @relation(fields: [stocktakeId], references: [id], onDelete: SetNull)
   createdBy    User              @relation(fields: [createdById], references: [id], onDelete: Restrict)
 
   @@index([tenantId, branchId, createdAt])
   @@index([ingredientId, createdAt])
   @@index([salesOrderId])
+  @@index([stocktakeId])
 }
 
 model SalesOrder {
   id          String            @id @default(uuid()) @db.Uuid
   tenantId    String            @db.Uuid
   branchId    String            @db.Uuid
+  tableId     String?           @db.Uuid
+  guestCount  Int?
+  billRequestedAt DateTime?
   createdById String            @db.Uuid
   status      SalesOrderStatus  @default(OPEN)
   totalAmount Decimal           @default(0) @db.Decimal(12, 2)
+  subtotalAmount Decimal        @default(0) @db.Decimal(12, 2)
+  taxRate Decimal               @default(0) @db.Decimal(5, 2)
+  taxAmount Decimal             @default(0) @db.Decimal(12, 2)
+  taxInclusive Boolean          @default(false)
+  serviceChargeRate Decimal     @default(0) @db.Decimal(5, 2)
+  serviceChargeAmount Decimal   @default(0) @db.Decimal(12, 2)
+  currency String               @default("NPR") @db.VarChar(3)
   completedAt DateTime?
   kitchenStatus KitchenOrderStatus @default(PENDING)
   paymentMethod PaymentMethod?
@@ -228,18 +365,43 @@ model SalesOrder {
   cashChange Decimal? @db.Decimal(12, 2)
   shiftId String? @db.Uuid
   clientOrderId String? @db.VarChar(80)
+  offlineOrigin Boolean @default(false)
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
   tenant      Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   branch      Branch            @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  table       DiningTable?      @relation(fields: [tableId], references: [id], onDelete: SetNull)
   createdBy   User              @relation("SalesOrderCreator", fields: [createdById], references: [id], onDelete: Restrict)
   items       SalesOrderItem[]
   shift       Shift? @relation(fields: [shiftId], references: [id], onDelete: SetNull)
   movements   StockMovement[]
+  payments    Payment[]
+  refunds     Refund[]
 
   @@index([tenantId, branchId, status, createdAt])
   @@unique([tenantId, clientOrderId])
   @@index([shiftId])
+  @@index([tenantId, branchId, tableId, status])
+}
+
+model DiningTable {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @db.Uuid
+  branchId  String   @db.Uuid
+  name      String   @db.VarChar(80)
+  section   String?  @db.VarChar(100)
+  seats     Int      @default(2)
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch    Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  orders    SalesOrder[]
+
+  @@unique([branchId, name])
+  @@unique([tenantId, branchId, id])
+  @@index([tenantId, branchId, isActive, section, sortOrder])
 }
 
 model SalesOrderItem {
@@ -249,11 +411,49 @@ model SalesOrderItem {
   quantity    Decimal    @db.Decimal(12, 3)
   unitPrice   Decimal    @db.Decimal(10, 2)
   lineTotal   Decimal    @db.Decimal(12, 2)
+  unitCost    Decimal?   @db.Decimal(12, 4)
+  note        String?    @db.VarChar(200)
+  kitchenStatus KitchenItemStatus @default(NEW)
+  sentToKitchenAt DateTime?
+  preparingAt DateTime?
+  readyAt DateTime?
+  servedAt DateTime?
+  station    String?    @db.VarChar(100)
   order       SalesOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product     Product    @relation(fields: [productId], references: [id], onDelete: Restrict)
+  refunds     RefundItem[]
+  modifiers   SalesOrderItemModifier[]
 
-  @@unique([orderId, productId])
+  @@index([orderId, productId])
   @@index([productId])
+  @@index([sentToKitchenAt, kitchenStatus])
+}
+
+model SalesOrderItemModifier {
+  id         String        @id @default(uuid()) @db.Uuid
+  orderItemId String       @db.Uuid
+  optionId   String?       @db.Uuid
+  groupName  String        @db.VarChar(120)
+  optionName String        @db.VarChar(120)
+  priceDelta Decimal       @db.Decimal(10, 2)
+  orderItem  SalesOrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  option     ModifierOption? @relation(fields: [optionId], references: [id], onDelete: SetNull)
+  effects    SalesOrderItemModifierEffect[]
+
+  @@index([orderItemId])
+}
+
+model SalesOrderItemModifierEffect {
+  id                  String                 @id @default(uuid()) @db.Uuid
+  orderItemModifierId String                 @db.Uuid
+  ingredientId        String                 @db.Uuid
+  ingredientName      String                 @db.VarChar(160)
+  quantityDelta       Decimal                @db.Decimal(12, 3)
+  modifier            SalesOrderItemModifier @relation(fields: [orderItemModifierId], references: [id], onDelete: Cascade)
+  ingredient          Ingredient             @relation(fields: [ingredientId], references: [id], onDelete: Restrict)
+
+  @@index([orderItemModifierId])
+  @@index([ingredientId])
 }
 
 enum ShiftStatus {
@@ -278,7 +478,75 @@ model Shift {
   branch         Branch      @relation(fields: [branchId], references: [id], onDelete: Cascade)
   user           User        @relation(fields: [userId], references: [id], onDelete: Restrict)
   orders         SalesOrder[]
+  payments       Payment[]
+  refunds        Refund[]
+  cashMovements  CashMovement[]
+  expenses       Expense[]
 
   @@index([tenantId, branchId, status, openedAt])
   @@index([userId, branchId, closedAt])
+}
+
+model Payment {
+  id           String       @id @default(uuid()) @db.Uuid
+  tenantId     String       @db.Uuid
+  orderId      String       @db.Uuid
+  branchId     String       @db.Uuid
+  shiftId      String?      @db.Uuid
+  method       PaymentMethod
+  amount       Decimal      @db.Decimal(12, 2)
+  tendered     Decimal?     @db.Decimal(12, 2)
+  changeGiven  Decimal?     @db.Decimal(12, 2)
+  reference    String?      @db.VarChar(120)
+  createdById  String       @db.Uuid
+  createdAt    DateTime     @default(now())
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch       Branch       @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  order        SalesOrder   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  shift        Shift?       @relation(fields: [shiftId], references: [id], onDelete: SetNull)
+  createdBy    User         @relation("PaymentCreator", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, branchId, createdAt])
+  @@index([orderId, createdAt])
+  @@index([shiftId, method])
+}
+
+model Refund {
+  id            String       @id @default(uuid()) @db.Uuid
+  tenantId      String       @db.Uuid
+  orderId       String       @db.Uuid
+  branchId      String       @db.Uuid
+  shiftId       String?      @db.Uuid
+  amount        Decimal      @db.Decimal(12, 2)
+  taxAmount     Decimal      @default(0) @db.Decimal(12, 2)
+  reason        String       @db.VarChar(500)
+  restock       Boolean      @default(false)
+  method        PaymentMethod
+  createdById   String       @db.Uuid
+  approvedById  String       @db.Uuid
+  createdAt     DateTime     @default(now())
+  tenant        Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch        Branch       @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  order         SalesOrder   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  shift         Shift?       @relation(fields: [shiftId], references: [id], onDelete: SetNull)
+  createdBy     User         @relation("RefundCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  approvedBy    User         @relation("RefundApprover", fields: [approvedById], references: [id], onDelete: Restrict)
+  items         RefundItem[]
+
+  @@index([tenantId, branchId, createdAt])
+  @@index([orderId, createdAt])
+}
+
+model RefundItem {
+  id             String         @id @default(uuid()) @db.Uuid
+  refundId       String         @db.Uuid
+  orderItemId    String         @db.Uuid
+  quantity       Decimal        @db.Decimal(12, 3)
+  amount         Decimal        @db.Decimal(12, 2)
+  taxAmount      Decimal        @default(0) @db.Decimal(12, 2)
+  refund         Refund         @relation(fields: [refundId], references: [id], onDelete: Cascade)
+  orderItem      SalesOrderItem @relation(fields: [orderItemId], references: [id], onDelete: Restrict)
+
+  @@unique([refundId, orderItemId])
+  @@index([orderItemId])
 }

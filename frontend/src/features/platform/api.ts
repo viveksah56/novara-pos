@@ -21,7 +21,7 @@ export type SupportAgent = {
   user: { id: string; name: string; email: string; isActive: boolean };
 };
 export type PlatformOverview = {
-  metrics: { businesses: number; activeBusinesses: number; suspendedBusinesses: number; users: number; activePlans: number; unassignedBusinesses: number };
+  metrics: { businesses: number; activeBusinesses: number; suspendedBusinesses: number; users: number; activePlans: number; unassignedBusinesses: number; trialsEndingSoon: number; pastDueSubscriptions: number; monthlyRecurringRevenue: { currency: string; amount: number }[] };
   recentBusinesses: PlatformBusiness[];
 };
 export type PlatformHealth = {
