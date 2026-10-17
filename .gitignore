@@ -1,0 +1,21 @@
+# Local machine/editor files
+.DS_Store
+.idea/
+
+# Secrets and local environment configuration
+.env
+.env.*
+!.env.example
+!.env.production.example
+
+# Installed dependencies and generated build artifacts
+**/node_modules/
+**/.next/
+**/dist/
+**/build/
+**/coverage/
+**/prisma/generated/
+**/*.tsbuildinfo
+
+# Personal documents accidentally placed at repository root
+/Bibek_Sah_FullStack_Resume*.pdf

@@ -1,0 +1,51 @@
+enum TenantStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+model Tenant {
+  id          String       @id @default(uuid()) @db.Uuid
+  name        String       @db.VarChar(160)
+  status      TenantStatus @default(ACTIVE)
+  currency    String       @default("NPR") @db.VarChar(3)
+  planId      String?      @db.Uuid
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  branches    Branch[]
+  memberships Membership[]
+  plan        SubscriptionPlan? @relation(fields: [planId], references: [id], onDelete: SetNull)
+  platformTickets PlatformTicket[]
+  categories Category[]
+  products Product[]
+  ingredients Ingredient[]
+  recipes Recipe[]
+  suppliers Supplier[]
+  stockLevels StockLevel[]
+  purchases Purchase[]
+  stockMovements StockMovement[]
+  salesOrders SalesOrder[]
+  shifts Shift[]
+  subscription Subscription?
+
+  @@index([status, createdAt])
+  @@index([planId])
+}
+
+model Branch {
+  id                 String              @id @default(uuid()) @db.Uuid
+  tenantId           String              @db.Uuid
+  name               String              @db.VarChar(120)
+  timezone           String              @default("Asia/Kathmandu") @db.VarChar(64)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branchAssignments BranchAssignment[]
+  stockLevels StockLevel[]
+  purchases Purchase[]
+  stockMovements StockMovement[]
+  salesOrders SalesOrder[]
+  shifts Shift[]
+
+  @@unique([tenantId, id])
+  @@index([tenantId, createdAt])
+}
