@@ -14,7 +14,7 @@ export const requireAuth: RequestHandler = async (request, _response, next) => {
   }
 
   try {
-    const payload = jwt.verify(accessToken, env.ACCESS_TOKEN_SECRET) as JwtPayload;
+    const payload = jwt.verify(accessToken, env.ACCESS_TOKEN_SECRET, { algorithms: ["HS256"] }) as JwtPayload;
     if (typeof payload.sub !== "string") {
       throw new HttpError(401, "UNAUTHENTICATED", "Please sign in to continue.");
     }

@@ -18,6 +18,7 @@ Browser
 - **Backend:** `backend/`, Express 5, TypeScript, Zod validation, Pino structured JSON logging, Prisma 7 and PostgreSQL.
 - **API envelope:** successful responses use `{ "data": ..., "status": "success" }`; failures use `{ "data": null, "status": "error", "error": { "code", "message", "requestId" } }`.
 - **Tenant isolation:** tenant IDs in URLs and selected branch context are treated as untrusted input. Backend membership and branch assignment checks scope operational reads and writes.
+- **Proxy trust:** Express `TRUST_PROXY` defaults to disabled. Set `TRUST_PROXY=1` only when exactly one trusted reverse proxy is in front of the API; never enable blanket proxy trust on a directly reachable server.
 - **Frontend data flow:** feature APIs under `frontend/src/features/<feature>/api`, query hooks under `hooks`, reusable UI under `frontend/src/components`.
 - **Auth:** access and rotating refresh tokens are stored in HTTP-only cookies. Next Proxy performs an optimistic route check; backend middleware and route services remain authoritative.
 
@@ -182,7 +183,7 @@ Replace `:tenantId` with the active tenant UUID.
 | `GET`, `PATCH` | `/platform/tickets`, `/platform/tickets/:ticketId` | Platform support queue and ticket actions |
 | `GET` | `/platform/overview` | Platform summary (`SUPER_ADMIN`) |
 | `GET` | `/platform/businesses`, `/platform/businesses/:businessId` | Search/list business directory and view details |
-| `PATCH`, `DELETE` | `/platform/businesses/:businessId` | Update/suspend or remove a business (`SUPER_ADMIN`) |
+| `PATCH` | `/platform/businesses/:businessId` | Update plan or suspend/reactivate a business while preserving operational history (`SUPER_ADMIN`) |
 | `GET`, `POST`, `PATCH`, `DELETE` | `/platform/plans`, `/platform/plans/:planId` | Manage plans (`SUPER_ADMIN`) |
 | `GET`, `POST`, `DELETE` | `/platform/support-agents`, `/platform/support-agents/:userId` | Manage support agents (`SUPER_ADMIN`) |
 | `GET` | `/platform/search` | Search businesses/users/tickets |

@@ -6,7 +6,7 @@ import { prisma } from "@lib/prisma.js";
 import { requireAuth } from "@middleware/auth.js";
 import { requirePlatformRole } from "@middleware/platform-auth.js";
 import {
-  addSupportAgent, createPlan, deleteBusiness, deletePlan, getBusiness, getPlatformOverview,
+  addSupportAgent, createPlan, deletePlan, getBusiness, getPlatformOverview,
   getSystemHealth, listBusinesses, listPlans, listSupportAgents, removeSupportAgent,
   searchPlatform, updateBusiness, updatePlan,
   createPlatformTicket, listMyPlatformTickets, listPlatformTickets, updatePlatformTicket,
@@ -95,11 +95,6 @@ platformRouter.patch("/businesses/:businessId", requirePlatformRole("SUPER_ADMIN
   const businessId = idSchema.parse(Array.isArray(request.params.businessId) ? request.params.businessId[0] : request.params.businessId);
   const input = z.object({ status: statusSchema.optional(), planId: idSchema.nullable().optional() }).refine((value) => Object.keys(value).length > 0).parse(request.body);
   sendSuccess(response, { business: await updateBusiness(businessId, input) });
-});
-
-platformRouter.delete("/businesses/:businessId", requirePlatformRole("SUPER_ADMIN"), async (request, response) => {
-  const businessId = idSchema.parse(Array.isArray(request.params.businessId) ? request.params.businessId[0] : request.params.businessId);
-  sendSuccess(response, await deleteBusiness(businessId));
 });
 
 platformRouter.get("/plans", requirePlatformRole("SUPER_ADMIN"), async (_request, response) => {

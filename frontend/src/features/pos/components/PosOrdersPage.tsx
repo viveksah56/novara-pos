@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { formatDateTime } from "@/lib/formatDateTime";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -44,7 +45,7 @@ export function PosOrdersPage() {
   const currency = membership?.tenant.currency ?? "NPR";
   const columns: DataColumn<PosOrderRecord>[] = [
     { id: "id", header: "Order", accessorFn: (order) => order.id, cell: (order) => <span className="font-mono text-xs">#{order.id.slice(-6).toUpperCase()}</span> },
-    { id: "createdAt", header: "Placed", accessorFn: (order) => new Date(order.createdAt).getTime(), cell: (order) => new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(new Date(order.createdAt)) },
+    { id: "createdAt", header: "Placed", accessorFn: (order) => new Date(order.createdAt).getTime(), cell: (order) => formatDateTime(new Date(order.createdAt), "en", { dateStyle: "medium", timeStyle: "short" }) },
     { id: "createdBy", header: "Staff", accessorFn: (order) => order.createdBy.name, cell: (order) => order.createdBy.name },
     { id: "table", header: "Table", accessorFn: (order) => order.table?.name ?? "Counter", cell: (order) => order.table ? <span className="inline-flex rounded-full border border-primary/25 bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">Table {order.table.name}</span> : <span className="text-xs text-muted-foreground">Counter</span> },
     { id: "items", header: "Items", accessorFn: (order) => order.items.map((item) => item.product.name).join(" "), cell: (order) => <span className="block max-w-72 truncate">{order.items.map((item) => `${item.quantity} × ${item.product.name}`).join(", ")}</span> },

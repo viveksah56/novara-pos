@@ -44,11 +44,12 @@ export async function getDashboard(userId: string, view: DashboardView, tenantId
   const now = new Date();
   const calendars: Array<BusinessCalendar & { branchId: string }> = scopedBranches.map(({ id, timezone, businessDayStart }) => ({ branchId: id, timezone, businessDayStart }));
   const todayScopes = calendars.map((calendar) => ({ branchId: calendar.branchId, completedAt: { gte: businessDayStartAt(now, calendar), lte: now } }));
+  const paymentTodayScopes = calendars.map((calendar) => ({ branchId: calendar.branchId, createdAt: { gte: businessDayStartAt(now, calendar), lte: now } }));
   const weekScopes = calendars.map((calendar) => ({ branchId: calendar.branchId, completedAt: { gte: businessWeekStartAt(now, calendar), lte: now } }));
   const completedStatuses: Prisma.SalesOrderWhereInput["status"] = { in: ["COMPLETED", "PARTIALLY_REFUNDED", "REFUNDED"] };
   const completedTodayWhere: Prisma.SalesOrderWhereInput = { tenantId: membership.tenantId, status: completedStatuses, OR: todayScopes };
 
-  const [todayOrders, weekOrders, todayRefunds, weekRefunds, openOrderCount, openOrderQueue, reviewOrders, ownTodayOrders, lowStockRows, recentMovements, pendingPurchases, currentShift, kitchenItemsByStatus, incomingKitchenTickets, shiftAlerts, wasteMovements, setupCounts, subscription] = await Promise.all([
+  const [todayOrders, weekOrders, todayRefunds, weekRefunds, openOrderCount, openOrderQueue, reviewOrders, ownTodayOrders, cashierPayments, cashierRefunds, cashierOrderIds, lowStockRows, recentMovements, pendingPurchases, currentShift, kitchenItemsByStatus, incomingKitchenTickets, shiftAlerts, wasteMovements, setupCounts, subscription] = await Promise.all([
     prisma.salesOrder.findMany({ where: completedTodayWhere, select: { branchId: true, totalAmount: true, completedAt: true } }),
     prisma.salesOrder.findMany({ where: { tenantId: membership.tenantId, ...branchWhere, status: completedStatuses, OR: weekScopes }, select: { branchId: true, totalAmount: true, completedAt: true } }),
     prisma.refund.findMany({ where: { tenantId: membership.tenantId, ...branchWhere, OR: calendars.map((calendar) => ({ branchId: calendar.branchId, createdAt: { gte: businessDayStartAt(now, calendar), lte: now } })) }, select: { amount: true } }),
@@ -56,7 +57,10 @@ export async function getDashboard(userId: string, view: DashboardView, tenantId
     prisma.salesOrder.count({ where: { tenantId: membership.tenantId, ...branchWhere, status: "OPEN" } }),
     view === "overview" && role === "MANAGER" ? prisma.salesOrder.findMany({ where: { tenantId: membership.tenantId, ...branchWhere, status: "OPEN" }, orderBy: [{ billRequestedAt: "desc" }, { createdAt: "asc" }], take: 8, select: { id: true, createdAt: true, totalAmount: true, billRequestedAt: true, table: { select: { name: true } }, createdBy: { select: { name: true } } } }) : Promise.resolve([]),
     view === "overview" && role === "MANAGER" ? prisma.salesOrder.findMany({ where: { tenantId: membership.tenantId, ...branchWhere, status: { in: ["PARTIALLY_REFUNDED", "REFUNDED", "CANCELLED"] } }, orderBy: { updatedAt: "desc" }, take: 5, select: { id: true, createdAt: true, status: true, table: { select: { name: true } } } }) : Promise.resolve([]),
-    prisma.salesOrder.findMany({ where: { ...completedTodayWhere, createdById: userId }, select: { totalAmount: true } }),
+    view === "pos" && role === "CASHIER" ? prisma.salesOrder.findMany({ where: { ...completedTodayWhere, createdById: userId }, select: { totalAmount: true } }) : Promise.resolve([]),
+    view === "pos" && role === "CASHIER" ? prisma.payment.groupBy({ by: ["method"], where: { tenantId: membership.tenantId, branchId: { in: scopedBranchIds }, createdById: userId, OR: paymentTodayScopes }, _sum: { amount: true } }) : Promise.resolve([]),
+    view === "pos" && role === "CASHIER" ? prisma.refund.groupBy({ by: ["method"], where: { tenantId: membership.tenantId, branchId: { in: scopedBranchIds }, createdById: userId, OR: calendars.map((calendar) => ({ branchId: calendar.branchId, createdAt: { gte: businessDayStartAt(now, calendar), lte: now } })) }, _sum: { amount: true } }) : Promise.resolve([]),
+    view === "pos" && role === "CASHIER" ? prisma.payment.findMany({ where: { tenantId: membership.tenantId, branchId: { in: scopedBranchIds }, createdById: userId, OR: paymentTodayScopes }, distinct: ["orderId"], select: { orderId: true } }) : Promise.resolve([]),
     prisma.stockLevel.findMany({ where: { tenantId: membership.tenantId, ...branchWhere }, select: { quantity: true, reorderLevel: true } }),
     prisma.stockMovement.count({ where: { tenantId: membership.tenantId, OR: calendars.map((calendar) => ({ branchId: calendar.branchId, createdAt: { gte: businessWeekStartAt(now, calendar), lte: now } })) } }),
     prisma.purchase.count({ where: { tenantId: membership.tenantId, ...branchWhere, status: { in: ["DRAFT", "ORDERED"] } } }),
@@ -94,7 +98,12 @@ export async function getDashboard(userId: string, view: DashboardView, tenantId
   const salesThisWeek = weekOrders.reduce((sum, order) => sum + Number(order.totalAmount), 0);
   const refundsToday = todayRefunds.reduce((sum, refund) => sum + Number(refund.amount), 0);
   const refundsThisWeek = weekRefunds.reduce((sum, refund) => sum + Number(refund.amount), 0);
-  const ownSalesToday = ownTodayOrders.reduce((sum, order) => sum + Number(order.totalAmount), 0);
+  const ownSalesToday = role === "CASHIER" && view === "pos"
+    ? cashierPayments.reduce((sum, payment) => sum + Number(payment._sum.amount ?? 0), 0) - cashierRefunds.reduce((sum, refund) => sum + Number(refund._sum.amount ?? 0), 0)
+    : ownTodayOrders.reduce((sum, order) => sum + Number(order.totalAmount), 0);
+  const paymentMix = role === "CASHIER" && view === "pos"
+    ? [...new Set([...cashierPayments.map(({ method }) => method), ...cashierRefunds.map(({ method }) => method)])].map((method) => ({ method, amount: Number(cashierPayments.find((payment) => payment.method === method)?._sum.amount ?? 0) - Number(cashierRefunds.find((refund) => refund.method === method)?._sum.amount ?? 0) }))
+    : [];
   const lowStock = lowStockRows.filter((stock) => Number(stock.quantity) <= Number(stock.reorderLevel)).length;
   const costsConfigured = costedOrders.length > 0 && costedOrders.every((order) => order.items.every((item) => item.product.recipe && item.product.recipe.ingredients.every((line) => line.ingredient.unitCost !== null)));
   const costOfGoods = costedOrders.reduce((sum, order) => sum + order.items.reduce((itemSum, item) => itemSum + (item.product.recipe?.ingredients.reduce((recipeSum, line) => recipeSum + Number(line.quantity) * Number(item.quantity) * Number(line.ingredient.unitCost ?? 0), 0) ?? 0), 0), 0);
@@ -111,7 +120,7 @@ export async function getDashboard(userId: string, view: DashboardView, tenantId
   const hourlySales = Array.from({ length: 24 }, (_, hour) => ({ hour, sales: 0, orders: 0 }));
   for (const order of todayOrders) {
     if (!order.completedAt) continue;
-    const timezone = calendarByBranch.get(order.branchId)?.timezone;
+    const timezone = calendarByBranch.get(order.branchId)?.timezone ?? "Asia/Kathmandu";
     const hour = Number(new Intl.DateTimeFormat("en", { timeZone: timezone, hour: "2-digit", hourCycle: "h23" }).format(order.completedAt));
     const slot = hourlySales[hour];
     if (slot) { slot.orders += 1; slot.sales += Number(order.totalAmount); }
@@ -133,11 +142,12 @@ export async function getDashboard(userId: string, view: DashboardView, tenantId
     view, role, tenant: { id: membership.tenant.id, name: membership.tenant.name, currency: membership.tenant.currency }, branches, activeBranch,
     permissions: { reportsSalesRead: role === "OWNER" || role === "MANAGER", reportsProfitRead: role === "OWNER", staffRead: role === "OWNER" || role === "MANAGER", inventoryRead: role === "OWNER" || role === "MANAGER" || role === "INVENTORY_MANAGER" },
     metrics: view === "overview"
-      ? { salesToday, salesThisWeek: salesThisWeek - refundsThisWeek, netSales: salesToday - refundsToday, refunds: refundsToday, openOrders: openOrderCount, lowStock, foodCostPercent: costsConfigured && salesToday > 0 ? (costOfGoods / salesToday) * 100 : null, profit: costsConfigured ? salesToday - refundsToday - costOfGoods : null }
-      : view === "pos" ? { ownSalesToday, ownOrdersToday: ownTodayOrders.length, shiftStatus: currentShift ? "OPEN" : "NOT_STARTED" }
+      ? { salesToday, salesThisWeek: salesThisWeek - refundsThisWeek, netSales: salesToday - refundsToday, refunds: refundsToday, openOrders: openOrderCount, lowStock, ...(role === "OWNER" ? { foodCostPercent: costsConfigured && salesToday > 0 ? (costOfGoods / salesToday) * 100 : null, profit: costsConfigured ? salesToday - refundsToday - costOfGoods : null } : {}) }
+      : view === "pos" ? { ownSalesToday, ownOrdersToday: role === "CASHIER" ? cashierOrderIds.length : ownTodayOrders.length, shiftStatus: currentShift ? "OPEN" : "NOT_STARTED" }
       : view === "kitchen" ? { incomingOrders: incomingKitchenTickets, incomingItems: kitchenItemsByStatus.find(({ kitchenStatus }) => kitchenStatus === "NEW")?._count._all ?? 0, itemsToPrepare, readyToServe: kitchenItemsByStatus.find(({ kitchenStatus }) => kitchenStatus === "READY")?._sum.quantity ?? 0 }
       : { lowStock, recentMovements, pendingPurchases, wasteEntries: wasteMovements.length, wasteQuantity: wasteByIngredient.reduce((sum, row) => sum + row.quantity, 0), wasteValue: wasteByIngredient.reduce((sum, row) => sum + row.value, 0) },
     ...(view === "overview" && role === "OWNER" ? { setup: { unrecipeProducts, trialDaysRemaining, trialStatus: subscription?.status ?? null, branchUsage: activeBranches, branchLimit: subscription?.plan.maxBranches ?? null, staffUsage: activeStaff, staffLimit: subscription?.plan.maxStaff ?? null, planName: subscription?.plan.name ?? null } } : {}),
+    ...(view === "pos" && role === "CASHIER" ? { paymentMix } : {}),
     ...(view === "inventory" ? { wasteByIngredient } : {}),
     trend: view === "overview" ? trend : undefined,
     hourlySales: view === "overview" && role === "MANAGER" ? hourlySales : undefined,

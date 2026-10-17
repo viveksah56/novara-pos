@@ -13,6 +13,7 @@ export type PosOrderRecord = PosOrder & {
   table?: { id: string; name: string; section: string | null } | null;
   billRequestedAt?: string | null;
   createdBy: { id: string; name: string; role?: "OWNER" | "MANAGER" | "CASHIER" | "WAITER" | "KITCHEN_STAFF" | "INVENTORY_MANAGER" | null };
+  payments?: { createdById: string; method: PosPaymentMethod; amount: number | string; createdAt: string }[];
   items: { id: string; quantity: number; unitPrice: number | string; lineTotal: number | string; note?: string | null; kitchenStatus?: KitchenItemStatus; sentToKitchenAt?: string | null; modifiers?: { id: string; groupName: string; optionName: string; priceDelta: number | string }[]; product: { id: string; name: string; sku: string | null } }[];
 };
 

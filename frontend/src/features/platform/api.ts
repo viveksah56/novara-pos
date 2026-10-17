@@ -55,7 +55,6 @@ export const platformApi = {
   businesses: (q = "") => request<{ businesses: PlatformBusiness[] }>(apiClient.get(`${base}/businesses`, { params: q ? { q } : undefined })).then((result) => result.businesses),
   business: (id: string) => request<{ business: BusinessDetails }>(apiClient.get(`${base}/businesses/${id}`)).then((result) => result.business),
   updateBusiness: (id: string, input: { status?: BusinessStatus; planId?: string | null }) => request<{ business: PlatformBusiness }>(apiClient.patch(`${base}/businesses/${id}`, input)).then((result) => result.business),
-  deleteBusiness: (id: string) => request<{ id: string; deleted: true }>(apiClient.delete(`${base}/businesses/${id}`)),
   plans: () => request<{ plans: SubscriptionPlan[] }>(apiClient.get(`${base}/plans`)).then((result) => result.plans),
   createPlan: (input: Omit<SubscriptionPlan, "id" | "createdAt" | "updatedAt" | "_count" | "isActive">) => request<{ plan: SubscriptionPlan }>(apiClient.post(`${base}/plans`, input)).then((result) => result.plan),
   updatePlan: (id: string, input: Partial<Pick<SubscriptionPlan, "name" | "description" | "priceMonthly" | "currency" | "trialDays" | "maxBranches" | "maxStaff" | "isActive">>) => request<{ plan: SubscriptionPlan }>(apiClient.patch(`${base}/plans/${id}`, input)).then((result) => result.plan),

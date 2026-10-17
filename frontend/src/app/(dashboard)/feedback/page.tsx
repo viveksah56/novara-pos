@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { formatDateTime } from "@/lib/formatDateTime";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, CheckCircle2, CircleHelp, Clock3, LifeBuoy, MessageSquareText, Send, ShieldCheck, Sparkles } from "lucide-react";
@@ -157,4 +158,4 @@ function StatusBadge({ status }: { status: PlatformTicket["status"] }) { const s
 function EmptyState({ title, description, icon }: { title: string; description: string; icon: "sparkles" | "help" }) { const Icon = icon === "sparkles" ? Sparkles : CircleHelp; return <div className="px-6 py-12 text-center"><span className="mx-auto grid size-11 place-items-center rounded-2xl bg-secondary text-primary"><Icon className="size-5" /></span><h4 className="mt-3 text-sm font-semibold">{title}</h4><p className="mx-auto mt-1 max-w-sm text-xs leading-5 text-muted-foreground">{description}</p></div>; }
 function LoadingState() { return <div className="space-y-3 p-5" aria-busy="true">{[0, 1, 2].map((index) => <div key={index} className="h-20 animate-pulse rounded-xl bg-secondary/60" />)}<span className="sr-only">Loading submissions…</span></div>; }
 function StatePanel({ title, message, onRetry }: { title: string; message: string; onRetry?: () => void }) { return <div className="p-5"><p className="text-sm font-medium">{title}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{message}</p>{onRetry ? <Button variant="outline" size="sm" className="mt-3" onClick={onRetry}>Try again</Button> : null}</div>; }
-function formatDate(value: string) { return new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(value)); }
+function formatDate(value: string) { return formatDateTime(new Date(value), "en", { dateStyle: "medium" }); }

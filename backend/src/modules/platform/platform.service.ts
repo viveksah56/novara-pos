@@ -79,18 +79,6 @@ export async function updateBusiness(id: string, input: { status?: "ACTIVE" | "S
   }
 }
 
-export async function deleteBusiness(id: string) {
-  try {
-    await prisma.tenant.delete({ where: { id } });
-  } catch (error) {
-    if (error && typeof error === "object" && "code" in error && error.code === "P2025") {
-      throw new HttpError(404, "BUSINESS_NOT_FOUND", "The business could not be found.");
-    }
-    throw error;
-  }
-  return { id, deleted: true as const };
-}
-
 export async function listPlans() {
   return prisma.subscriptionPlan.findMany({
     orderBy: [{ isActive: "desc" }, { priceMonthly: "asc" }],

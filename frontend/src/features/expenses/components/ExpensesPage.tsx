@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
+import { formatDateTime } from "@/lib/formatDateTime";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Activity, BarChart3, Building2, CalendarDays, CircleDollarSign, CreditCard, LayoutDashboard, Package, Plus, ReceiptText, Users } from "lucide-react";
@@ -49,7 +50,7 @@ export function ExpensesPage() {
   const total = rows.filter((row) => !row.voidedAt).reduce((sum, row) => sum + Number(row.amount), 0);
   const topCategory = (() => { const totals = new Map<string, number>(); for (const row of rows) if (!row.voidedAt) totals.set(row.category.name, (totals.get(row.category.name) ?? 0) + Number(row.amount)); return [...totals].sort((a, b) => b[1] - a[1])[0]; })();
   const columns: DataColumn<ExpenseRecord>[] = [
-    { id: "expenseDate", header: "Date", accessorFn: (row) => row.expenseDate, cell: (row) => new Intl.DateTimeFormat("en", { dateStyle: "medium", timeZone: "UTC" }).format(new Date(row.expenseDate)) },
+    { id: "expenseDate", header: "Date", accessorFn: (row) => row.expenseDate, cell: (row) => formatDateTime(new Date(row.expenseDate), "en", { dateStyle: "medium", timeZone: "UTC" }) },
     { id: "description", header: "Expense", accessorFn: (row) => `${row.description} ${row.category.name}`, cell: (row) => <div><p className="font-medium">{row.description}</p><p className="text-xs text-muted-foreground">{row.category.name} · {row.branch.name}</p></div> },
     { id: "amount", header: "Amount", accessorFn: (row) => Number(row.amount), cell: (row) => <span className="font-medium tabular-nums">{formatMoney(Number(row.amount), membership?.tenant.currency ?? "NPR")}</span> },
     { id: "paymentMethod", header: "Method", accessorFn: (row) => row.paymentMethod, cell: (row) => row.paymentMethod.replaceAll("_", " ").toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase()) },

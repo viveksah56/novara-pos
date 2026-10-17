@@ -103,6 +103,9 @@ export async function issueSession(userId: string, metadata: SessionMetadata = {
 }
 
 export async function register(input: RegisterInput, metadata: SessionMetadata = {}): Promise<{ tokens: TokenPair; userId: string }> {
+  if (env.SUPER_ADMIN_EMAILS.includes(input.email.trim().toLowerCase())) {
+    throw new HttpError(409, "PLATFORM_ADMIN_REGISTRATION_DISABLED", "This email is reserved for a platform administrator and cannot be registered publicly.");
+  }
   const passwordHash = await bcrypt.hash(input.password, BCRYPT_ROUNDS);
   const familyId = randomUUID();
   const tenantSlug = input.businessName

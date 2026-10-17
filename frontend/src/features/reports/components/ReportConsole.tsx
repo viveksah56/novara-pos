@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { formatDateTime } from "@/lib/formatDateTime";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { Activity, BarChart3, Package, TrendingUp } from "lucide-react";
@@ -36,7 +37,7 @@ export function ReportConsole({ kind }: Props) {
   const report = sales.data as SalesReport | undefined;
   const stock = inventory.data as InventoryReport | undefined;
   const dailyColumns: DataColumn<SalesReport["daily"][number]>[] = [
-    { id: "date", header: "Date", accessorFn: (row) => row.date, cell: (row) => new Intl.DateTimeFormat("en", { dateStyle: "medium", timeZone: "UTC" }).format(new Date(`${row.date}T00:00:00Z`)) },
+    { id: "date", header: "Date", accessorFn: (row) => row.date, cell: (row) => formatDateTime(new Date(`${row.date}T00:00:00Z`), "en", { dateStyle: "medium", timeZone: "UTC" }) },
     { id: "orders", header: "Orders", accessorFn: (row) => row.orders, cell: (row) => row.orders },
     { id: "sales", header: "Net sales", accessorFn: (row) => row.sales, cell: (row) => formatMoney(row.sales, report?.currency ?? "NPR") },
   ];
@@ -52,7 +53,7 @@ export function ReportConsole({ kind }: Props) {
     { id: "reorderLevel", header: "Reorder at", accessorFn: (row) => Number(row.reorderLevel), cell: (row) => `${row.reorderLevel} ${row.ingredient.unit.toLowerCase()}` },
   ];
   const movementColumns: DataColumn<NonNullable<typeof stock>["movements"][number]>[] = [
-    { id: "createdAt", header: "When", accessorFn: (row) => new Date(row.createdAt).getTime(), cell: (row) => new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(new Date(row.createdAt)) },
+    { id: "createdAt", header: "When", accessorFn: (row) => new Date(row.createdAt).getTime(), cell: (row) => formatDateTime(new Date(row.createdAt), "en", { dateStyle: "medium", timeStyle: "short" }) },
     { id: "ingredient", header: "Ingredient", accessorFn: (row) => row.ingredient.name, cell: (row) => row.ingredient.name },
     { id: "branch", header: "Branch", accessorFn: (row) => row.branch.name, cell: (row) => row.branch.name },
     { id: "type", header: "Movement", accessorFn: (row) => row.type, cell: (row) => row.type.replaceAll("_", " ").toLowerCase() },

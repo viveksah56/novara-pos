@@ -45,6 +45,7 @@ function getUserId(userId: string | undefined) { if (!userId) throw new HttpErro
 const ownerManager: BusinessRole[] = ["OWNER", "MANAGER"];
 const inventoryRoles: BusinessRole[] = ["OWNER", "MANAGER", "INVENTORY_MANAGER"];
 const orderRoles: BusinessRole[] = ["OWNER", "MANAGER", "CASHIER", "WAITER"];
+const menuReadRoles: BusinessRole[] = ["OWNER", "MANAGER", "CASHIER", "WAITER", "INVENTORY_MANAGER"];
 const paymentRoles: BusinessRole[] = ["OWNER", "MANAGER", "CASHIER"];
 const expenseRoles: BusinessRole[] = ["OWNER", "MANAGER"];
 
@@ -262,14 +263,14 @@ operationsRouter.post("/:tenantId/team/:membershipId/reactivate", async (request
   sendSuccess(response, { membershipId, isActive: true });
 });
 
-operationsRouter.get("/:tenantId/categories", async (request, response) => { const { tenantId, userId } = params(request); await tenantScope(getUserId(userId), tenantId); sendSuccess(response, { categories: await prisma.category.findMany({ where: { tenantId }, include: { _count: { select: { products: true } } }, orderBy: [{ sortOrder: "asc" }, { name: "asc" }] }) }); });
+operationsRouter.get("/:tenantId/categories", async (request, response) => { const { tenantId, userId } = params(request); await tenantScope(getUserId(userId), tenantId, menuReadRoles); sendSuccess(response, { categories: await prisma.category.findMany({ where: { tenantId }, include: { _count: { select: { products: true } } }, orderBy: [{ sortOrder: "asc" }, { name: "asc" }] }) }); });
 operationsRouter.post("/:tenantId/categories", async (request, response) => { const { tenantId, userId } = params(request); await tenantScope(getUserId(userId), tenantId, ownerManager); const input = categorySchema.parse(request.body); sendSuccess(response, { category: await prisma.category.create({ data: { ...input, tenantId } }) }, 201); });
 operationsRouter.patch("/:tenantId/categories/:id", async (request, response) => { const { tenantId, userId } = params(request); await tenantScope(getUserId(userId), tenantId, ownerManager); const id = uuid.parse(request.params.id); const input = categorySchema.partial().extend({ isActive: z.boolean().optional() }).parse(request.body); const result = await prisma.category.updateMany({ where: { id, tenantId }, data: input }); if (!result.count) throw new HttpError(404, "CATEGORY_NOT_FOUND", "Category not found."); sendSuccess(response, { category: await prisma.category.findUniqueOrThrow({ where: { id } }) }); });
 operationsRouter.delete("/:tenantId/categories/:id", async (request, response) => { const { tenantId, userId } = params(request); await tenantScope(getUserId(userId), tenantId, ["OWNER"]); const id = uuid.parse(request.params.id); const result = await prisma.category.deleteMany({ where: { id, tenantId } }); if (!result.count) throw new HttpError(404, "CATEGORY_NOT_FOUND", "Category not found."); sendSuccess(response, { id, deleted: true }); });
 
 operationsRouter.get("/:tenantId/products", async (request, response) => {
   const { tenantId, userId } = params(request);
-  await tenantScope(getUserId(userId), tenantId);
+  await tenantScope(getUserId(userId), tenantId, menuReadRoles);
   const products = await prisma.product.findMany({
     where: { tenantId },
     include: {
@@ -297,7 +298,7 @@ operationsRouter.patch("/:tenantId/products/:id", async (request, response) => {
 operationsRouter.delete("/:tenantId/products/:id", async (request, response) => { const { tenantId, userId } = params(request); await tenantScope(getUserId(userId), tenantId, ownerManager); const id = uuid.parse(request.params.id); const result = await prisma.product.deleteMany({ where: { id, tenantId } }); if (!result.count) throw new HttpError(404, "PRODUCT_NOT_FOUND", "Product not found."); sendSuccess(response, { id, deleted: true }); });
 
 operationsRouter.get("/:tenantId/modifier-groups", async (request, response) => {
-  const { tenantId, userId } = params(request); await tenantScope(getUserId(userId), tenantId);
+  const { tenantId, userId } = params(request); await tenantScope(getUserId(userId), tenantId, menuReadRoles);
   const groups = await prisma.modifierGroup.findMany({
     where: { tenantId },
     include: {
@@ -382,7 +383,7 @@ operationsRouter.patch("/:tenantId/ingredients/:id", async (request, response) =
   if (!update.count) throw new HttpError(404, "INGREDIENT_NOT_FOUND", "Ingredient not found.");
   sendSuccess(response, { ingredient: await prisma.ingredient.findUniqueOrThrow({ where: { id } }) });
 });
-operationsRouter.get("/:tenantId/recipes", async (request, response) => { const { tenantId, userId } = params(request); await tenantScope(getUserId(userId), tenantId, ownerManager); sendSuccess(response, { recipes: await prisma.recipe.findMany({ where: { tenantId }, include: { product: { select: { id: true, name: true } }, ingredients: { include: { ingredient: { select: { id: true, name: true, unit: true } } } } }, orderBy: { updatedAt: "desc" } }) }); });
+operationsRouter.get("/:tenantId/recipes", async (request, response) => { const { tenantId, userId } = params(request); await tenantScope(getUserId(userId), tenantId, ["OWNER", "MANAGER", "INVENTORY_MANAGER"]); sendSuccess(response, { recipes: await prisma.recipe.findMany({ where: { tenantId }, include: { product: { select: { id: true, name: true } }, ingredients: { include: { ingredient: { select: { id: true, name: true, unit: true } } } } }, orderBy: { updatedAt: "desc" } }) }); });
 operationsRouter.put("/:tenantId/recipes", async (request, response) => { const { tenantId, userId } = params(request); await tenantScope(getUserId(userId), tenantId, ownerManager); const input = recipeSchema.parse(request.body); if (!await prisma.product.findFirst({ where: { id: input.productId, tenantId } })) throw new HttpError(400, "INVALID_PRODUCT", "Choose a product in this business."); const ingredientCount = await prisma.ingredient.count({ where: { id: { in: input.ingredients.map(({ ingredientId }) => ingredientId) }, tenantId } }); if (ingredientCount !== new Set(input.ingredients.map(({ ingredientId }) => ingredientId)).size) throw new HttpError(400, "INVALID_INGREDIENT", "One or more ingredients do not belong to this business."); const recipe = await prisma.recipe.upsert({ where: { productId: input.productId }, create: { tenantId, productId: input.productId, notes: input.notes, ingredients: { create: input.ingredients } }, update: { notes: input.notes, ingredients: { deleteMany: {}, create: input.ingredients } }, include: { ingredients: { include: { ingredient: true } }, product: true } }); sendSuccess(response, { recipe }); });
 
 operationsRouter.get("/:tenantId/orders", async (request, response) => {
@@ -410,6 +411,7 @@ operationsRouter.get("/:tenantId/orders", async (request, response) => {
       },
       table: { select: { id: true, name: true, section: true } },
       items: { include: { modifiers: true, product: { select: { id: true, name: true, sku: true } } } },
+      ...(scope.role === "CASHIER" ? { payments: { where: { createdById: getUserId(userId) }, select: { createdById: true, method: true, amount: true, createdAt: true } } } : {}),
     },
     orderBy: { createdAt: "desc" },
     take: 100,
@@ -1376,7 +1378,7 @@ operationsRouter.post("/:tenantId/orders/:id/request-bill", async (request, resp
 });
 
 operationsRouter.get("/:tenantId/kitchen/queue", async (request, response) => {
-  const { tenantId, userId } = params(request); const scope = await tenantScope(getUserId(userId), tenantId, ["OWNER", "MANAGER", "KITCHEN_STAFF"]);
+  const { tenantId, userId } = params(request); const scope = await tenantScope(getUserId(userId), tenantId, ["OWNER", "KITCHEN_STAFF"]);
   const query = z.object({ branchId: uuid.optional(), station: z.string().trim().min(1).max(100).optional() }).parse(request.query);
   if (query.branchId) await branchAccess(tenantId, query.branchId, scope);
   const rows = await prisma.salesOrderItem.findMany({
@@ -1394,6 +1396,7 @@ operationsRouter.patch("/:tenantId/kitchen/items/:id", async (request, response)
   const scope = await tenantScope(actorId, tenantId, ["OWNER", "MANAGER", "KITCHEN_STAFF"]);
   const id = uuid.parse(request.params.id);
   const input = z.object({ status: z.enum(["PREPARING", "READY", "NEW"]), reason: z.string().trim().min(3).max(300).optional() }).parse(request.body);
+  if (input.status !== "NEW" && scope.role !== "OWNER" && scope.role !== "KITCHEN_STAFF") throw new HttpError(403, "KITCHEN_UPDATE_FORBIDDEN", "Only Kitchen Staff can advance kitchen items.");
   if (input.status === "NEW" && (!(["OWNER", "MANAGER"] as BusinessRole[]).includes(scope.role) || !input.reason)) throw new HttpError(403, "KITCHEN_RESET_FORBIDDEN", "Only a manager can reset an item, and a reason is required.");
   const item = await prisma.$transaction(async (tx) => {
     await tx.$queryRaw`SELECT "id" FROM "SalesOrderItem" WHERE "id" = ${id}::uuid FOR UPDATE`;
@@ -1426,13 +1429,13 @@ operationsRouter.get("/:tenantId/orders/ready", async (request, response) => {
   const { tenantId, userId } = params(request); const scope = await tenantScope(getUserId(userId), tenantId, orderRoles);
   const branchId = request.query.branchId ? uuid.parse(request.query.branchId) : undefined;
   if (branchId) await branchAccess(tenantId, branchId, scope);
-  const items = await prisma.salesOrderItem.findMany({ where: { sentToKitchenAt: { not: null }, kitchenStatus: "READY", order: { tenantId, status: "OPEN", ...(branchId ? { branchId } : scope.role === "OWNER" ? {} : { branchId: { in: scope.branchIds } }) } }, include: { modifiers: true, product: { select: { id: true, name: true } }, order: { select: { id: true, table: { select: { name: true } }, createdBy: { select: { id: true, name: true } } } } }, orderBy: { readyAt: "asc" }, take: 200 });
+  const items = await prisma.salesOrderItem.findMany({ where: { sentToKitchenAt: { not: null }, kitchenStatus: "READY", order: { tenantId, status: "OPEN", ...(branchId ? { branchId } : scope.role === "OWNER" ? {} : { branchId: { in: scope.branchIds } }), ...(scope.role === "WAITER" ? { createdById: getUserId(userId) } : {}) } }, include: { modifiers: true, product: { select: { id: true, name: true } }, order: { select: { id: true, table: { select: { name: true } }, createdBy: { select: { id: true, name: true } } } } }, orderBy: { readyAt: "asc" }, take: 200 });
   sendSuccess(response, { items });
 });
 
 operationsRouter.get("/:tenantId/kitchen/orders", async (request, response) => {
   const { tenantId, userId } = params(request);
-  const scope = await tenantScope(getUserId(userId), tenantId, ["OWNER", "MANAGER", "KITCHEN_STAFF"]);
+  const scope = await tenantScope(getUserId(userId), tenantId, ["OWNER", "KITCHEN_STAFF"]);
   const branchId = request.query.branchId ? uuid.parse(request.query.branchId) : undefined;
   if (branchId) await branchAccess(tenantId, branchId, scope);
   const orders = await prisma.salesOrder.findMany({ where: { tenantId, status: "OPEN", ...(branchId ? { branchId } : scope.role === "OWNER" ? {} : { branchId: { in: scope.branchIds } }) }, include: { branch: { select: { id: true, name: true } }, items: { include: { product: { select: { id: true, name: true } } } } }, orderBy: { createdAt: "asc" }, take: 200 });
@@ -1441,7 +1444,7 @@ operationsRouter.get("/:tenantId/kitchen/orders", async (request, response) => {
 
 operationsRouter.patch("/:tenantId/kitchen/orders/:id", async (request, response) => {
   const { tenantId, userId } = params(request);
-  const scope = await tenantScope(getUserId(userId), tenantId, ["OWNER", "MANAGER", "KITCHEN_STAFF"]);
+  const scope = await tenantScope(getUserId(userId), tenantId, ["OWNER", "KITCHEN_STAFF"]);
   const id = uuid.parse(request.params.id);
   const input = z.object({ kitchenStatus: z.enum(["PREPARING", "READY"]) }).parse(request.body);
   const order = await prisma.salesOrder.findFirst({ where: { id, tenantId }, select: { id: true, branchId: true } });

@@ -37,9 +37,18 @@ const positiveInteger = (value: string | undefined, fallback: number, name: stri
   return parsed;
 };
 
+function trustProxySetting(value: string | undefined): boolean | number | string {
+  const normalized = value?.trim();
+  if (!normalized || normalized.toLowerCase() === "false") return false;
+  if (normalized.toLowerCase() === "true") throw new Error("TRUST_PROXY=true is unsafe; configure an exact proxy hop count or trusted proxy range.");
+  if (/^\d+$/.test(normalized)) return Number(normalized);
+  return normalized;
+}
+
 export const env = {
   NODE_ENV: nodeEnvironment,
   PORT: positiveInteger(process.env.PORT, 8000, "PORT"),
+  TRUST_PROXY: trustProxySetting(process.env.TRUST_PROXY),
   CORS_ORIGIN: corsOrigins,
   APP_ORIGIN: new URL(appOrigin).origin,
   RESEND_API_KEY: process.env.RESEND_API_KEY?.trim() || undefined,

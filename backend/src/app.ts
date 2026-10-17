@@ -15,6 +15,7 @@ import { apiRouter } from "@routes/index.js";
 export function createApp() {
   const app = express();
 
+  app.set("trust proxy", env.TRUST_PROXY);
   app.disable("x-powered-by");
   app.use(requestId);
   app.use(helmet());

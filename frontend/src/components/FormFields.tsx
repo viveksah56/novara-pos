@@ -32,7 +32,7 @@ export function FormField({ label, error, hint, id, className, type = "text", ..
           type={isPassword && isPasswordVisible ? "text" : type}
           aria-invalid={Boolean(error)}
           aria-describedby={describedBy}
-          className={`h-[3.15rem] rounded-xl border-border/80 bg-background/80 px-4 shadow-[inset_0_1px_2px_rgb(22_46_34/3%)] placeholder:text-muted-foreground/65 focus-visible:border-primary/50 focus-visible:ring-4 focus-visible:ring-primary/10 ${isPassword ? "pr-12" : ""} ${className ?? ""}`}
+          className={`h-11 min-h-11 rounded-xl border-border/80 bg-background/80 px-4 shadow-[inset_0_1px_2px_rgb(22_46_34/3%)] placeholder:text-muted-foreground/65 focus-visible:border-primary/50 focus-visible:ring-4 focus-visible:ring-primary/10 ${isPassword ? "pr-12" : ""} ${className ?? ""}`}
         />
         {isPassword ? (
           <button
@@ -91,7 +91,7 @@ export function FormSelectField({ label, options, error, placeholder, id, name, 
         required={required}
         aria-invalid={Boolean(error)}
         aria-describedby={error ? errorId : undefined}
-        triggerClassName="h-[3.15rem] rounded-xl bg-background/80 px-4 text-base shadow-[inset_0_1px_2px_rgb(22_46_34/3%)] focus-visible:ring-4 focus-visible:ring-primary/10"
+        triggerClassName="h-11 min-h-11 rounded-xl bg-background/80 px-4 text-base shadow-[inset_0_1px_2px_rgb(22_46_34/3%)] focus-visible:ring-4 focus-visible:ring-primary/10"
       />
       {error ? <p id={errorId} className="text-xs font-medium text-destructive" role="alert">{error}</p> : null}
     </div>
