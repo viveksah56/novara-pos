@@ -10,4 +10,5 @@ model AuditLog {
 
   @@index([userId, createdAt])
   @@index([action, createdAt])
+  @@schema("novara_database")
 }

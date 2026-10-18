@@ -30,7 +30,7 @@ export async function createTeamInvitation(input: {
   const rawToken = randomBytes(32).toString("base64url");
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
   const invitation = await prisma.$transaction(async (transaction) => {
-    await transaction.$queryRaw`SELECT "id" FROM "Tenant" WHERE "id" = ${input.tenantId}::uuid FOR UPDATE`;
+    await transaction.$queryRaw`SELECT "id" FROM "novara_database"."Tenant" WHERE "id" = ${input.tenantId}::uuid FOR UPDATE`;
     const branches = await transaction.branch.findMany({ where: { tenantId: input.tenantId, id: { in: input.branchIds }, isActive: true }, select: { id: true } });
     if (branches.length !== new Set(input.branchIds).size) throw new HttpError(400, "INVALID_BRANCH", "One or more selected active branches are not part of this business.");
     const user = await transaction.user.findUnique({ where: { email: input.email }, select: { id: true, isActive: true } });
@@ -111,10 +111,10 @@ export async function acceptTeamInvitation(input: { token: string; name?: string
   }
 
   const result = await prisma.$transaction(async (transaction) => {
-    await transaction.$queryRaw`SELECT "id" FROM "TeamInvitation" WHERE "id" = ${invitationPreview.id}::uuid FOR UPDATE`;
+    await transaction.$queryRaw`SELECT "id" FROM "novara_database"."TeamInvitation" WHERE "id" = ${invitationPreview.id}::uuid FOR UPDATE`;
     const invitation = await transaction.teamInvitation.findUnique({ where: { id: invitationPreview.id }, include: { branches: { select: { branchId: true } } } });
     if (!invitation || invitation.acceptedAt || invitation.revokedAt || invitation.expiresAt <= new Date()) throw new HttpError(400, "INVITATION_INVALID", "This invitation link is invalid or has expired.");
-    await transaction.$queryRaw`SELECT "id" FROM "Tenant" WHERE "id" = ${invitation.tenantId}::uuid FOR UPDATE`;
+    await transaction.$queryRaw`SELECT "id" FROM "novara_database"."Tenant" WHERE "id" = ${invitation.tenantId}::uuid FOR UPDATE`;
     const tenant = await transaction.tenant.findUniqueOrThrow({ where: { id: invitation.tenantId }, select: { status: true, name: true, planId: true, subscription: { select: { plan: { select: { maxStaff: true } } } } } });
     if (tenant.status !== "ACTIVE") throw new HttpError(403, "BUSINESS_SUSPENDED", "This business is not accepting team invitations right now.");
     if (!invitation.branches.length) throw new HttpError(409, "INVITATION_BRANCHES_REQUIRED", "Ask the inviter to issue a new invitation with branch access.");

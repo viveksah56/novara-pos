@@ -1,6 +1,7 @@
 enum PlatformRole {
   SUPER_ADMIN
   SUPPORT_AGENT
+  @@schema("novara_database")
 }
 
 model PlatformStaff {
@@ -13,4 +14,5 @@ model PlatformStaff {
   assignedTickets PlatformTicket[]
 
   @@index([role, createdAt])
+  @@schema("novara_database")
 }

@@ -140,7 +140,7 @@ operationsRouter.post("/:tenantId/expenses/:id/void", async (request, response) 
   const id = uuid.parse(request.params.id);
   const { reason } = z.object({ reason: z.string().trim().min(3).max(500) }).parse(request.body);
   const expense = await prisma.$transaction(async (tx) => {
-    await tx.$queryRaw`SELECT "id" FROM "Expense" WHERE "id" = ${id}::uuid AND "tenantId" = ${tenantId}::uuid FOR UPDATE`;
+    await tx.$queryRaw`SELECT "id" FROM "novara_database"."Expense" WHERE "id" = ${id}::uuid AND "tenantId" = ${tenantId}::uuid FOR UPDATE`;
     const row = await tx.expense.findFirst({ where: { id, tenantId }, include: { cashMovement: { include: { reversedBy: true, shift: { select: { status: true } } } } } });
     if (!row) throw new HttpError(404, "EXPENSE_NOT_FOUND", "Expense not found.");
     await branchAccess(tenantId, row.branchId, scope);
@@ -220,7 +220,7 @@ operationsRouter.patch("/:tenantId/team/:membershipId", async (request, response
   }
   if (input.role && input.role !== "OWNER" && branchIds.length === 0) throw new HttpError(400, "BRANCH_REQUIRED", "Assign at least one active branch to every non-owner team member.");
   const updated = await prisma.$transaction(async (transaction) => {
-    await transaction.$queryRaw`SELECT "id" FROM "Tenant" WHERE "id" = ${tenantId}::uuid FOR UPDATE`;
+    await transaction.$queryRaw`SELECT "id" FROM "novara_database"."Tenant" WHERE "id" = ${tenantId}::uuid FOR UPDATE`;
     if (target.role === "OWNER" && input.role && input.role !== "OWNER" && await transaction.membership.count({ where: { tenantId, role: "OWNER", isActive: true } }) <= 1) throw new HttpError(409, "LAST_OWNER_REQUIRED", "A business must retain at least one active Owner.");
     const before = await transaction.membership.findUniqueOrThrow({ where: { id: membershipId }, include: { branchAssignments: true } });
     const membership = await transaction.membership.update({ where: { id: membershipId }, data: { ...(input.role ? { role: input.role } : {}) } });
@@ -242,7 +242,7 @@ operationsRouter.delete("/:tenantId/team/:membershipId", async (request, respons
   if (scope.role === "MANAGER" && (target.role === "OWNER" || target.role === "MANAGER" || target.branchAssignments.some(({ branchId }) => !scope.branchIds.includes(branchId)))) throw new HttpError(403, "ROLE_FORBIDDEN", "You cannot deactivate this team member.");
   if (await prisma.shift.findFirst({ where: { tenantId, userId: target.userId, status: "OPEN" }, select: { id: true } })) throw new HttpError(409, "OPEN_SHIFT_MUST_CLOSE", "Close this member’s open register shift before deactivating their access.");
   await prisma.$transaction(async (transaction) => {
-    await transaction.$queryRaw`SELECT "id" FROM "Tenant" WHERE "id" = ${tenantId}::uuid FOR UPDATE`;
+    await transaction.$queryRaw`SELECT "id" FROM "novara_database"."Tenant" WHERE "id" = ${tenantId}::uuid FOR UPDATE`;
     if (target.role === "OWNER" && await transaction.membership.count({ where: { tenantId, role: "OWNER", isActive: true } }) <= 1) throw new HttpError(409, "LAST_OWNER_REQUIRED", "A business must retain at least one active Owner.");
     await transaction.membership.update({ where: { id: membershipId }, data: { isActive: false } });
     await transaction.auditLog.create({ data: { userId: actorId, action: "team.member.deactivate", metadata: { tenantId, membershipId, memberId: target.userId } } });
@@ -551,7 +551,7 @@ operationsRouter.post("/:tenantId/orders", async (request, response) => {
   const totalAmount = roundMoney(subtotalAmount + serviceChargeAmount + (branch.taxInclusive ? 0 : taxAmount));
   const order = await prisma.$transaction(async (tx) => {
     if (input.tableId) {
-      await tx.$queryRaw`SELECT "id" FROM "DiningTable" WHERE "id" = ${input.tableId}::uuid AND "tenantId" = ${tenantId}::uuid AND "branchId" = ${input.branchId}::uuid FOR UPDATE`;
+      await tx.$queryRaw`SELECT "id" FROM "novara_database"."DiningTable" WHERE "id" = ${input.tableId}::uuid AND "tenantId" = ${tenantId}::uuid AND "branchId" = ${input.branchId}::uuid FOR UPDATE`;
       if (await tx.salesOrder.findFirst({ where: { tableId: input.tableId, status: "OPEN" }, select: { id: true } })) throw new HttpError(409, "TABLE_OCCUPIED", "This table already has an open order. Open that order to add more items.");
     }
     const created = await tx.salesOrder.create({
@@ -598,7 +598,7 @@ operationsRouter.post("/:tenantId/orders/:id/items", async (request, response) =
     return { productId: line.productId, quantity: line.quantity, unitPrice, lineTotal: Math.round(unitPrice * line.quantity * 100) / 100, note: line.note, modifiers: options.map(({ group, option }) => ({ groupName: group.name, optionName: option.name, optionId: option.id, priceDelta: option.priceDelta })) };
   });
   const updated = await prisma.$transaction(async (tx) => {
-    await tx.$queryRaw`SELECT "id" FROM "SalesOrder" WHERE "id" = ${id}::uuid AND "tenantId" = ${tenantId}::uuid FOR UPDATE`;
+    await tx.$queryRaw`SELECT "id" FROM "novara_database"."SalesOrder" WHERE "id" = ${id}::uuid AND "tenantId" = ${tenantId}::uuid FOR UPDATE`;
     const order = await tx.salesOrder.findFirst({ where: { id, tenantId }, include: { branch: { select: { taxRate: true, taxInclusive: true, serviceChargeRate: true, currency: true } } } });
     if (!order || order.status !== "OPEN") throw new HttpError(409, "ORDER_NOT_OPEN", "Items can only be added to an open order.");
     for (const line of lines) {
@@ -687,7 +687,7 @@ operationsRouter.post("/:tenantId/orders/:id/complete", async (request, response
     const costIngredientIds = [...ingredientCostFallback.keys()];
     for (const ingredientId of [...costIngredientIds].sort()) {
       await tx.stockLevel.upsert({ where: { branchId_ingredientId: { branchId: current.branchId, ingredientId } }, create: { tenantId, branchId: current.branchId, ingredientId, quantity: 0 }, update: {} });
-      await tx.$queryRaw`SELECT "id" FROM "StockLevel" WHERE "branchId" = ${current.branchId}::uuid AND "ingredientId" = ${ingredientId}::uuid FOR UPDATE`;
+      await tx.$queryRaw`SELECT "id" FROM "novara_database"."StockLevel" WHERE "branchId" = ${current.branchId}::uuid AND "ingredientId" = ${ingredientId}::uuid FOR UPDATE`;
     }
     const branchStockCosts = new Map((await tx.stockLevel.findMany({ where: { tenantId, branchId: current.branchId, ingredientId: { in: costIngredientIds } }, select: { ingredientId: true, averageCost: true } })).map((row) => [row.ingredientId, Number(row.averageCost)]));
     for (const item of current.items) {
@@ -787,7 +787,7 @@ operationsRouter.post("/:tenantId/orders/:id/refunds", async (request, response)
   const branch = await branchAccess(tenantId, orderScope.branchId, scope);
 
   const refund = await prisma.$transaction(async (tx) => {
-    await tx.$queryRaw`SELECT "id" FROM "SalesOrder" WHERE "id" = ${id}::uuid AND "tenantId" = ${tenantId}::uuid FOR UPDATE`;
+    await tx.$queryRaw`SELECT "id" FROM "novara_database"."SalesOrder" WHERE "id" = ${id}::uuid AND "tenantId" = ${tenantId}::uuid FOR UPDATE`;
     const order = await tx.salesOrder.findFirst({
       where: { id, tenantId },
       include: { items: { include: { modifiers: { include: { effects: true } }, product: { include: { recipe: { include: { ingredients: true } } } } } }, refunds: { select: { amount: true } } },
@@ -984,7 +984,7 @@ operationsRouter.put("/:tenantId/stocktakes/:id/lines", async (request, response
   if (ingredients.length !== ingredientIds.length) throw new HttpError(400, "INVALID_INGREDIENT", "All counted ingredients must be active in this business.");
   const countedAt = new Date();
   const result = await prisma.$transaction(async (tx) => {
-    await tx.$queryRaw`SELECT "id" FROM "Stocktake" WHERE "id" = ${id}::uuid AND "tenantId" = ${tenantId}::uuid FOR UPDATE`;
+    await tx.$queryRaw`SELECT "id" FROM "novara_database"."Stocktake" WHERE "id" = ${id}::uuid AND "tenantId" = ${tenantId}::uuid FOR UPDATE`;
     const current = await tx.stocktake.findFirst({ where: { id, tenantId }, select: { status: true } });
     if (current?.status !== "DRAFT") throw new HttpError(409, "STOCKTAKE_LOCKED", "Only draft stocktakes can be counted.");
     for (const line of [...input.lines].sort((left, right) => left.ingredientId.localeCompare(right.ingredientId))) await tx.stocktakeLine.upsert({
@@ -1007,7 +1007,7 @@ operationsRouter.post("/:tenantId/stocktakes/:id/submit", async (request, respon
   if (!stocktake) throw new HttpError(404, "STOCKTAKE_NOT_FOUND", "Stocktake not found.");
   await branchAccess(tenantId, stocktake.branchId, scope);
   const submitted = await prisma.$transaction(async (tx) => {
-    await tx.$queryRaw`SELECT "id" FROM "Stocktake" WHERE "id" = ${id}::uuid AND "tenantId" = ${tenantId}::uuid FOR UPDATE`;
+    await tx.$queryRaw`SELECT "id" FROM "novara_database"."Stocktake" WHERE "id" = ${id}::uuid AND "tenantId" = ${tenantId}::uuid FOR UPDATE`;
     const count = await tx.stocktakeLine.count({ where: { stocktakeId: id } });
     if (!count) throw new HttpError(409, "STOCKTAKE_EMPTY", "Record at least one ingredient count before submitting.");
     const changed = await tx.stocktake.updateMany({ where: { id, tenantId, status: "DRAFT" }, data: { status: "SUBMITTED", submittedAt: new Date() } });
@@ -1027,7 +1027,7 @@ operationsRouter.post("/:tenantId/stocktakes/:id/approve", async (request, respo
   if (!stocktakeScope) throw new HttpError(404, "STOCKTAKE_NOT_FOUND", "Stocktake not found.");
   await branchAccess(tenantId, stocktakeScope.branchId, scope);
   const approved = await prisma.$transaction(async (tx) => {
-    await tx.$queryRaw`SELECT "id" FROM "Stocktake" WHERE "id" = ${id}::uuid AND "tenantId" = ${tenantId}::uuid FOR UPDATE`;
+    await tx.$queryRaw`SELECT "id" FROM "novara_database"."Stocktake" WHERE "id" = ${id}::uuid AND "tenantId" = ${tenantId}::uuid FOR UPDATE`;
     const stocktake = await tx.stocktake.findFirst({ where: { id, tenantId }, include: { lines: { orderBy: { ingredientId: "asc" } } } });
     if (!stocktake) throw new HttpError(404, "STOCKTAKE_NOT_FOUND", "Stocktake not found.");
     if (stocktake.status !== "SUBMITTED") throw new HttpError(409, "STOCKTAKE_NOT_SUBMITTED", "Only submitted stocktakes can be approved.");
@@ -1035,7 +1035,7 @@ operationsRouter.post("/:tenantId/stocktakes/:id/approve", async (request, respo
     let totalVarianceValue = new Prisma.Decimal(0);
     for (const line of stocktake.lines) {
       await tx.stockLevel.upsert({ where: { branchId_ingredientId: { branchId: stocktake.branchId, ingredientId: line.ingredientId } }, create: { tenantId, branchId: stocktake.branchId, ingredientId: line.ingredientId, quantity: 0 }, update: {} });
-      await tx.$queryRaw`SELECT "id" FROM "StockLevel" WHERE "branchId" = ${stocktake.branchId}::uuid AND "ingredientId" = ${line.ingredientId}::uuid FOR UPDATE`;
+      await tx.$queryRaw`SELECT "id" FROM "novara_database"."StockLevel" WHERE "branchId" = ${stocktake.branchId}::uuid AND "ingredientId" = ${line.ingredientId}::uuid FOR UPDATE`;
       const current = await tx.stockLevel.findUniqueOrThrow({ where: { branchId_ingredientId: { branchId: stocktake.branchId, ingredientId: line.ingredientId } } });
       const laterMovements = await tx.stockMovement.aggregate({ where: { tenantId, branchId: stocktake.branchId, ingredientId: line.ingredientId, createdAt: { gt: line.countedAt } }, _sum: { quantity: true } });
       const expectedAtCount = new Prisma.Decimal(current.quantity).minus(laterMovements._sum.quantity ?? 0);
@@ -1066,7 +1066,7 @@ operationsRouter.post("/:tenantId/stocktakes/:id/cancel", async (request, respon
   if (!stocktake) throw new HttpError(404, "STOCKTAKE_NOT_FOUND", "Stocktake not found.");
   await branchAccess(tenantId, stocktake.branchId, scope);
   await prisma.$transaction(async (tx) => {
-    await tx.$queryRaw`SELECT "id" FROM "Stocktake" WHERE "id" = ${id}::uuid AND "tenantId" = ${tenantId}::uuid FOR UPDATE`;
+    await tx.$queryRaw`SELECT "id" FROM "novara_database"."Stocktake" WHERE "id" = ${id}::uuid AND "tenantId" = ${tenantId}::uuid FOR UPDATE`;
     const changed = await tx.stocktake.updateMany({ where: { id, tenantId, status: { in: ["DRAFT", "SUBMITTED"] } }, data: { status: "CANCELLED" } });
     if (changed.count !== 1) throw new HttpError(409, "STOCKTAKE_NOT_CANCELLABLE", "Only draft or submitted stocktakes can be cancelled.");
     await tx.auditLog.create({ data: { userId: actorId, action: "stocktake.cancel", metadata: { tenantId, stocktakeId: id } } });
@@ -1152,7 +1152,7 @@ operationsRouter.post("/:tenantId/purchases/:id/receive", async (request, respon
   await branchAccess(tenantId, purchaseScope.branchId, scope);
 
   const updated = await prisma.$transaction(async (tx) => {
-    await tx.$queryRaw`SELECT "id" FROM "Purchase" WHERE "id" = ${id}::uuid AND "tenantId" = ${tenantId}::uuid FOR UPDATE`;
+    await tx.$queryRaw`SELECT "id" FROM "novara_database"."Purchase" WHERE "id" = ${id}::uuid AND "tenantId" = ${tenantId}::uuid FOR UPDATE`;
     const purchase = await tx.purchase.findFirst({ where: { id, tenantId }, include: { items: { include: { ingredient: { select: { unitCost: true } } } } } });
     if (!purchase) throw new HttpError(404, "PURCHASE_NOT_FOUND", "Purchase order not found.");
     if (purchase.status !== "ORDERED" && purchase.status !== "PARTIALLY_RECEIVED") throw new HttpError(409, "PURCHASE_NOT_RECEIVABLE", "Only ordered purchases with outstanding quantities can be received.");
@@ -1171,7 +1171,7 @@ operationsRouter.post("/:tenantId/purchases/:id/receive", async (request, respon
         create: { tenantId, branchId: purchase.branchId, ingredientId: line.item.ingredientId, quantity: 0, averageCost: line.baseUnitCost },
         update: {},
       });
-      await tx.$queryRaw`SELECT "id" FROM "StockLevel" WHERE "branchId" = ${purchase.branchId}::uuid AND "ingredientId" = ${line.item.ingredientId}::uuid FOR UPDATE`;
+      await tx.$queryRaw`SELECT "id" FROM "novara_database"."StockLevel" WHERE "branchId" = ${purchase.branchId}::uuid AND "ingredientId" = ${line.item.ingredientId}::uuid FOR UPDATE`;
       const stock = await tx.stockLevel.findUniqueOrThrow({ where: { branchId_ingredientId: { branchId: purchase.branchId, ingredientId: line.item.ingredientId } } });
       const oldQuantity = new Prisma.Decimal(stock.quantity);
       const newQuantity = oldQuantity.plus(line.baseQuantity);
@@ -1231,7 +1231,7 @@ operationsRouter.post("/:tenantId/shifts/:id/close", async (request, response) =
   const id = uuid.parse(request.params.id);
   const input = z.object({ closingCash: cashAmount, note: z.string().trim().max(500).optional() }).parse(request.body);
   const closed = await prisma.$transaction(async (tx) => {
-    await tx.$queryRaw`SELECT "id" FROM "Shift" WHERE "id" = ${id}::uuid AND "tenantId" = ${tenantId}::uuid FOR UPDATE`;
+    await tx.$queryRaw`SELECT "id" FROM "novara_database"."Shift" WHERE "id" = ${id}::uuid AND "tenantId" = ${tenantId}::uuid FOR UPDATE`;
     const current = await tx.shift.findFirst({ where: { id, tenantId }, select: { id: true, branchId: true, userId: true, openingCash: true, expectedCash: true, status: true } });
     if (!current) throw new HttpError(404, "SHIFT_NOT_FOUND", "Shift not found.");
     await branchAccess(tenantId, current.branchId, scope);
@@ -1253,7 +1253,7 @@ operationsRouter.post("/:tenantId/shifts/:id/cash-movements", async (request, re
   const id = uuid.parse(request.params.id);
   const input = z.object({ type: z.enum(["PAY_IN", "PAY_OUT"]), amount: z.number().finite().positive().max(100_000_000), reason: z.string().trim().min(3).max(500) }).parse(request.body);
   const movement = await prisma.$transaction(async (tx) => {
-    await tx.$queryRaw`SELECT "id" FROM "Shift" WHERE "id" = ${id}::uuid AND "tenantId" = ${tenantId}::uuid FOR UPDATE`;
+    await tx.$queryRaw`SELECT "id" FROM "novara_database"."Shift" WHERE "id" = ${id}::uuid AND "tenantId" = ${tenantId}::uuid FOR UPDATE`;
     const shift = await tx.shift.findFirst({ where: { id, tenantId }, select: { id: true, branchId: true, userId: true, status: true, openingCash: true, expectedCash: true } });
     if (!shift) throw new HttpError(404, "SHIFT_NOT_FOUND", "Shift not found.");
     await branchAccess(tenantId, shift.branchId, scope);
@@ -1401,7 +1401,7 @@ operationsRouter.patch("/:tenantId/kitchen/items/:id", async (request, response)
   if (input.status !== "NEW" && scope.role !== "OWNER" && scope.role !== "KITCHEN_STAFF") throw new HttpError(403, "KITCHEN_UPDATE_FORBIDDEN", "Only Kitchen Staff can advance kitchen items.");
   if (input.status === "NEW" && (!(["OWNER", "MANAGER"] as BusinessRole[]).includes(scope.role) || !input.reason)) throw new HttpError(403, "KITCHEN_RESET_FORBIDDEN", "Only a manager can reset an item, and a reason is required.");
   const item = await prisma.$transaction(async (tx) => {
-    await tx.$queryRaw`SELECT "id" FROM "SalesOrderItem" WHERE "id" = ${id}::uuid FOR UPDATE`;
+    await tx.$queryRaw`SELECT "id" FROM "novara_database"."SalesOrderItem" WHERE "id" = ${id}::uuid FOR UPDATE`;
     const current = await tx.salesOrderItem.findFirst({ where: { id, order: { tenantId, status: "OPEN" } }, include: { order: { select: { id: true, branchId: true } } } });
     if (!current || !current.sentToKitchenAt) throw new HttpError(404, "KITCHEN_ITEM_NOT_FOUND", "Active kitchen item not found.");
     await branchAccess(tenantId, current.order.branchId, scope);

@@ -5,6 +5,7 @@ enum SubscriptionStatus {
   PAST_DUE
   CANCELED
   EXPIRED
+  @@schema("novara_database")
 }
 
 model Subscription {
@@ -23,4 +24,5 @@ model Subscription {
 
   @@index([status, currentPeriodEnd])
   @@index([planId, status])
+  @@schema("novara_database")
 }

@@ -1,6 +1,7 @@
 enum CashMovementType {
   PAY_IN
   PAY_OUT
+  @@schema("novara_database")
 }
 
 model ExpenseCategory {
@@ -15,6 +16,7 @@ model ExpenseCategory {
 
   @@unique([tenantId, name])
   @@index([tenantId, isActive, name])
+  @@schema("novara_database")
 }
 
 model CashMovement {
@@ -39,6 +41,7 @@ model CashMovement {
 
   @@index([tenantId, branchId, createdAt])
   @@index([shiftId, createdAt])
+  @@schema("novara_database")
 }
 
 model Expense {
@@ -70,4 +73,5 @@ model Expense {
   @@index([tenantId, branchId, expenseDate, voidedAt])
   @@index([categoryId, expenseDate])
   @@index([shiftId])
+  @@schema("novara_database")
 }
