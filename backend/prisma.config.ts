@@ -11,6 +11,8 @@ export default defineConfig({
     path: "prisma/migrations",
   },
   datasource: {
-    url: process.env.DATABASE_URL ?? "",
+    // Use the session-mode connection for schema changes. DATABASE_URL remains
+    // the application runtime connection and may use Supavisor transaction mode.
+    url: process.env.DIRECT_URL ?? process.env.DATABASE_URL ?? "",
   },
 });
