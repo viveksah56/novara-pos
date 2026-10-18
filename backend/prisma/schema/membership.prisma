@@ -5,7 +5,7 @@ enum BusinessRole {
   WAITER
   KITCHEN_STAFF
   INVENTORY_MANAGER
-  @@schema("novara")
+  @@schema("novara_database")
 }
 
 model Membership {
@@ -24,7 +24,7 @@ model Membership {
   @@unique([tenantId, id])
   @@index([userId, createdAt])
   @@index([tenantId, isActive, role])
-  @@schema("novara")
+  @@schema("novara_database")
 }
 
 model BranchAssignment {
@@ -38,5 +38,5 @@ model BranchAssignment {
 
   @@unique([membershipId, branchId])
   @@index([tenantId, branchId])
-  @@schema("novara")
+  @@schema("novara_database")
 }

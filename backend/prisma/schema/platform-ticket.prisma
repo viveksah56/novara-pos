@@ -2,7 +2,7 @@ enum PlatformTicketType {
   COMPLAINT
   FEEDBACK
   SUPPORT
-  @@schema("novara")
+  @@schema("novara_database")
 }
 
 enum PlatformTicketStatus {
@@ -10,7 +10,7 @@ enum PlatformTicketStatus {
   IN_PROGRESS
   RESOLVED
   CLOSED
-  @@schema("novara")
+  @@schema("novara_database")
 }
 
 enum PlatformTicketPriority {
@@ -18,7 +18,7 @@ enum PlatformTicketPriority {
   NORMAL
   HIGH
   URGENT
-  @@schema("novara")
+  @@schema("novara_database")
 }
 
 model PlatformTicket {
@@ -40,5 +40,5 @@ model PlatformTicket {
   @@index([status, priority, createdAt])
   @@index([tenantId, createdAt])
   @@index([createdById, createdAt])
-  @@schema("novara")
+  @@schema("novara_database")
 }

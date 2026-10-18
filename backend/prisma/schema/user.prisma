@@ -30,5 +30,5 @@ model User {
   approvedStocktakes Stocktake[] @relation("StocktakeApprover")
 
   @@index([isActive, createdAt])
-  @@schema("novara")
+  @@schema("novara_database")
 }
