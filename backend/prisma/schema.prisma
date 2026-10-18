@@ -7,5 +7,5 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  schemas  = ["public", "novara_database"]
+  schemas  = ["public", "novara"]
 }

@@ -15,7 +15,7 @@ model TeamInvitation {
 
   @@index([tenantId, email, createdAt])
   @@index([tenantId, revokedAt, acceptedAt, expiresAt])
-  @@schema("novara_database")
+  @@schema("novara")
 }
 
 model TeamInvitationBranch {
@@ -28,5 +28,5 @@ model TeamInvitationBranch {
 
   @@unique([invitationId, branchId])
   @@index([branchId])
-  @@schema("novara_database")
+  @@schema("novara")
 }

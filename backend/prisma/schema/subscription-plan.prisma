@@ -14,5 +14,5 @@ model SubscriptionPlan {
   subscriptions Subscription[]
 
   @@index([isActive, createdAt])
-  @@schema("novara_database")
+  @@schema("novara")
 }

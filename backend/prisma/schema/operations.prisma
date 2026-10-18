@@ -6,7 +6,7 @@ enum MeasureUnit {
   LITER
   OUNCE
   POUND
-  @@schema("novara_database")
+  @@schema("novara")
 }
 
 enum PurchaseStatus {
@@ -15,7 +15,7 @@ enum PurchaseStatus {
   PARTIALLY_RECEIVED
   RECEIVED
   CANCELLED
-  @@schema("novara_database")
+  @@schema("novara")
 }
 
 enum StocktakeStatus {
@@ -23,7 +23,7 @@ enum StocktakeStatus {
   SUBMITTED
   APPROVED
   CANCELLED
-  @@schema("novara_database")
+  @@schema("novara")
 }
 
 enum StockMovementType {
@@ -33,7 +33,7 @@ enum StockMovementType {
   RECIPE_USAGE
   REFUND_RESTOCK
   STOCKTAKE
-  @@schema("novara_database")
+  @@schema("novara")
 }
 
 enum SalesOrderStatus {
@@ -42,14 +42,14 @@ enum SalesOrderStatus {
   PARTIALLY_REFUNDED
   REFUNDED
   CANCELLED
-  @@schema("novara_database")
+  @@schema("novara")
 }
 
 enum KitchenOrderStatus {
   PENDING
   PREPARING
   READY
-  @@schema("novara_database")
+  @@schema("novara")
 }
 
 enum KitchenItemStatus {
@@ -57,7 +57,7 @@ enum KitchenItemStatus {
   PREPARING
   READY
   SERVED
-  @@schema("novara_database")
+  @@schema("novara")
 }
 
 enum PaymentMethod {
@@ -66,7 +66,7 @@ enum PaymentMethod {
   BANK_TRANSFER
   DIGITAL_WALLET
   OTHER
-  @@schema("novara_database")
+  @@schema("novara")
 }
 
 model Category {
@@ -82,7 +82,7 @@ model Category {
 
   @@unique([tenantId, name])
   @@index([tenantId, isActive, sortOrder])
-  @@schema("novara_database")
+  @@schema("novara")
 }
 
 model Product {
@@ -105,7 +105,7 @@ model Product {
   @@unique([tenantId, sku])
   @@index([tenantId, categoryId, isAvailable])
   @@index([tenantId, name])
-  @@schema("novara_database")
+  @@schema("novara")
 }
 
 model ModifierGroup {
@@ -124,7 +124,7 @@ model ModifierGroup {
 
   @@unique([tenantId, name])
   @@index([tenantId, isActive, sortOrder])
-  @@schema("novara_database")
+  @@schema("novara")
 }
 
 model ProductModifierGroup {
@@ -137,7 +137,7 @@ model ProductModifierGroup {
 
   @@unique([productId, groupId])
   @@index([groupId, sortOrder])
-  @@schema("novara_database")
+  @@schema("novara")
 }
 
 model ModifierOption {
@@ -154,7 +154,7 @@ model ModifierOption {
 
   @@unique([groupId, name])
   @@index([groupId, isActive, sortOrder])
-  @@schema("novara_database")
+  @@schema("novara")
 }
 
 model Ingredient {
@@ -177,7 +177,7 @@ model Ingredient {
 
   @@unique([tenantId, name])
   @@index([tenantId, isActive, name])
-  @@schema("novara_database")
+  @@schema("novara")
 }
 
 model Recipe {
@@ -192,7 +192,7 @@ model Recipe {
   ingredients RecipeIngredient[]
 
   @@index([tenantId, updatedAt])
-  @@schema("novara_database")
+  @@schema("novara")
 }
 
 model RecipeIngredient {
@@ -205,7 +205,7 @@ model RecipeIngredient {
 
   @@unique([recipeId, ingredientId])
   @@index([ingredientId])
-  @@schema("novara_database")
+  @@schema("novara")
 }
 
 model ModifierOptionRecipeItem {
@@ -218,7 +218,7 @@ model ModifierOptionRecipeItem {
 
   @@unique([optionId, ingredientId])
   @@index([ingredientId])
-  @@schema("novara_database")
+  @@schema("novara")
 }
 
 model Supplier {
@@ -236,7 +236,7 @@ model Supplier {
 
   @@unique([tenantId, name])
   @@index([tenantId, isActive, name])
-  @@schema("novara_database")
+  @@schema("novara")
 }
 
 model StockLevel {
@@ -254,7 +254,7 @@ model StockLevel {
 
   @@unique([branchId, ingredientId])
   @@index([tenantId, branchId, quantity])
-  @@schema("novara_database")
+  @@schema("novara")
 }
 
 model Stocktake {
@@ -276,7 +276,7 @@ model Stocktake {
   movements    StockMovement[]
 
   @@index([tenantId, branchId, status, startedAt])
-  @@schema("novara_database")
+  @@schema("novara")
 }
 
 model StocktakeLine {
@@ -293,7 +293,7 @@ model StocktakeLine {
 
   @@unique([stocktakeId, ingredientId])
   @@index([ingredientId, countedAt])
-  @@schema("novara_database")
+  @@schema("novara")
 }
 
 model Purchase {
@@ -317,7 +317,7 @@ model Purchase {
 
   @@index([tenantId, branchId, status, createdAt])
   @@index([supplierId, createdAt])
-  @@schema("novara_database")
+  @@schema("novara")
 }
 
 model PurchaseItem {
@@ -333,7 +333,7 @@ model PurchaseItem {
   ingredient       Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Restrict)
 
   @@unique([purchaseId, ingredientId])
-  @@schema("novara_database")
+  @@schema("novara")
 }
 
 model StockMovement {
@@ -361,7 +361,7 @@ model StockMovement {
   @@index([ingredientId, createdAt])
   @@index([salesOrderId])
   @@index([stocktakeId])
-  @@schema("novara_database")
+  @@schema("novara")
 }
 
 model SalesOrder {
@@ -406,7 +406,7 @@ model SalesOrder {
   @@unique([tenantId, clientOrderId])
   @@index([shiftId])
   @@index([tenantId, branchId, tableId, status])
-  @@schema("novara_database")
+  @@schema("novara")
 }
 
 model DiningTable {
@@ -427,7 +427,7 @@ model DiningTable {
   @@unique([branchId, name])
   @@unique([tenantId, branchId, id])
   @@index([tenantId, branchId, isActive, section, sortOrder])
-  @@schema("novara_database")
+  @@schema("novara")
 }
 
 model SalesOrderItem {
@@ -453,7 +453,7 @@ model SalesOrderItem {
   @@index([orderId, productId])
   @@index([productId])
   @@index([sentToKitchenAt, kitchenStatus])
-  @@schema("novara_database")
+  @@schema("novara")
 }
 
 model SalesOrderItemModifier {
@@ -468,7 +468,7 @@ model SalesOrderItemModifier {
   effects    SalesOrderItemModifierEffect[]
 
   @@index([orderItemId])
-  @@schema("novara_database")
+  @@schema("novara")
 }
 
 model SalesOrderItemModifierEffect {
@@ -482,13 +482,13 @@ model SalesOrderItemModifierEffect {
 
   @@index([orderItemModifierId])
   @@index([ingredientId])
-  @@schema("novara_database")
+  @@schema("novara")
 }
 
 enum ShiftStatus {
   OPEN
   CLOSED
-  @@schema("novara_database")
+  @@schema("novara")
 }
 
 model Shift {
@@ -515,7 +515,7 @@ model Shift {
 
   @@index([tenantId, branchId, status, openedAt])
   @@index([userId, branchId, closedAt])
-  @@schema("novara_database")
+  @@schema("novara")
 }
 
 model Payment {
@@ -540,7 +540,7 @@ model Payment {
   @@index([tenantId, branchId, createdAt])
   @@index([orderId, createdAt])
   @@index([shiftId, method])
-  @@schema("novara_database")
+  @@schema("novara")
 }
 
 model Refund {
@@ -567,7 +567,7 @@ model Refund {
 
   @@index([tenantId, branchId, createdAt])
   @@index([orderId, createdAt])
-  @@schema("novara_database")
+  @@schema("novara")
 }
 
 model RefundItem {
@@ -582,5 +582,5 @@ model RefundItem {
 
   @@unique([refundId, orderItemId])
   @@index([orderItemId])
-  @@schema("novara_database")
+  @@schema("novara")
 }

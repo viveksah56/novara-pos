@@ -1,7 +1,7 @@
 enum TenantStatus {
   ACTIVE
   SUSPENDED
-  @@schema("novara_database")
+  @@schema("novara")
 }
 
 model Tenant {
@@ -45,7 +45,7 @@ model Tenant {
 
   @@index([status, createdAt])
   @@index([planId])
-  @@schema("novara_database")
+  @@schema("novara")
 }
 
 model Branch {
@@ -91,5 +91,5 @@ model Branch {
   @@unique([tenantId, code])
   @@unique([tenantId, id])
   @@index([tenantId, createdAt])
-  @@schema("novara_database")
+  @@schema("novara")
 }

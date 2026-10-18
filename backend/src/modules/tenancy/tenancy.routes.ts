@@ -145,7 +145,7 @@ branchRouter.post("/", async (request, response) => {
 
   try {
     const branch = await prisma.$transaction(async (transaction) => {
-      await transaction.$queryRaw`SELECT "id" FROM "novara_database"."Tenant" WHERE "id" = ${context.id}::uuid FOR UPDATE`;
+      await transaction.$queryRaw`SELECT "id" FROM "novara"."Tenant" WHERE "id" = ${context.id}::uuid FOR UPDATE`;
       const subscription = await transaction.subscription.findUnique({ where: { tenantId: context.id }, include: { plan: { select: { maxBranches: true } } } });
       const tenant = await transaction.tenant.findUniqueOrThrow({ where: { id: context.id }, select: { planId: true, currency: true } });
       const plan = subscription?.plan ?? (tenant.planId ? await transaction.subscriptionPlan.findUnique({ where: { id: tenant.planId }, select: { maxBranches: true } }) : null);
@@ -218,7 +218,7 @@ branchRouter.post("/:id/deactivate", async (request, response) => {
   const context = await tenantContext(request, ["OWNER"]);
   const id = z.uuid().parse(request.params.id);
   const result = await prisma.$transaction(async (transaction) => {
-    await transaction.$queryRaw`SELECT "id" FROM "novara_database"."Tenant" WHERE "id" = ${context.id}::uuid FOR UPDATE`;
+    await transaction.$queryRaw`SELECT "id" FROM "novara"."Tenant" WHERE "id" = ${context.id}::uuid FOR UPDATE`;
     const branch = await transaction.branch.findFirst({ where: { id, tenantId: context.id } });
     if (!branch) throw new HttpError(404, "BRANCH_NOT_FOUND", "The branch could not be found.");
     if (!branch.isActive) return { branch, changed: false };
