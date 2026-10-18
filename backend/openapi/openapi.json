@@ -5375,6 +5375,1813 @@
         }
       }
     },
+    "/tenants/{tenantId}/categories": {
+      "get": {
+        "summary": "List menu categories",
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "tenantId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Menu categories and product counts.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "categories": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "tenantId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "sortOrder": {
+                                "type": "integer"
+                              },
+                              "isActive": {
+                                "type": "boolean"
+                              },
+                              "createdAt": {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              "updatedAt": {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              "_count": {
+                                "type": "object",
+                                "properties": {
+                                  "products": {
+                                    "type": "integer"
+                                  }
+                                },
+                                "required": [
+                                  "products"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "tenantId",
+                              "name",
+                              "sortOrder",
+                              "isActive",
+                              "createdAt",
+                              "updatedAt"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "categories"
+                      ]
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "success"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "status"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a menu category",
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "tenantId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 160
+                  },
+                  "sortOrder": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "isActive": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "name"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Category created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "category": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "tenantId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "sortOrder": {
+                              "type": "integer"
+                            },
+                            "isActive": {
+                              "type": "boolean"
+                            },
+                            "createdAt": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "updatedAt": {
+                              "type": "string",
+                              "format": "date-time"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "tenantId",
+                            "name",
+                            "sortOrder",
+                            "isActive",
+                            "createdAt",
+                            "updatedAt"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "category"
+                      ]
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "success"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "status"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tenants/{tenantId}/categories/{id}": {
+      "patch": {
+        "summary": "Update a menu category",
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "tenantId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 160
+                  },
+                  "sortOrder": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "isActive": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Category updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "category": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "tenantId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "sortOrder": {
+                              "type": "integer"
+                            },
+                            "isActive": {
+                              "type": "boolean"
+                            },
+                            "createdAt": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "updatedAt": {
+                              "type": "string",
+                              "format": "date-time"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "tenantId",
+                            "name",
+                            "sortOrder",
+                            "isActive",
+                            "createdAt",
+                            "updatedAt"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "category"
+                      ]
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "success"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "status"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a menu category",
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "tenantId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Category deleted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "deleted": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "deleted"
+                      ]
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "success"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "status"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tenants/{tenantId}/products": {
+      "get": {
+        "summary": "List menu products with recipe and modifier detail",
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "tenantId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Menu products.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "products": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "tenantId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "categoryId": {
+                                "type": "string",
+                                "nullable": true,
+                                "format": "uuid"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "description": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "sku": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "price": {
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "number"
+                                  }
+                                ]
+                              },
+                              "isAvailable": {
+                                "type": "boolean"
+                              },
+                              "createdAt": {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              "updatedAt": {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              "category": {
+                                "type": "object",
+                                "nullable": true,
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "name": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "name"
+                                ]
+                              },
+                              "recipe": {
+                                "type": "object",
+                                "nullable": true,
+                                "properties": {
+                                  "ingredients": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "ingredientId": {
+                                          "type": "string",
+                                          "format": "uuid"
+                                        },
+                                        "quantity": {
+                                          "anyOf": [
+                                            {
+                                              "type": "string"
+                                            },
+                                            {
+                                              "type": "number"
+                                            }
+                                          ]
+                                        }
+                                      },
+                                      "required": [
+                                        "ingredientId",
+                                        "quantity"
+                                      ]
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "ingredients"
+                                ]
+                              },
+                              "modifierGroups": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "group": {
+                                      "type": "object",
+                                      "properties": {
+                                        "id": {
+                                          "type": "string",
+                                          "format": "uuid"
+                                        },
+                                        "tenantId": {
+                                          "type": "string",
+                                          "format": "uuid"
+                                        },
+                                        "name": {
+                                          "type": "string"
+                                        },
+                                        "minSelect": {
+                                          "type": "integer"
+                                        },
+                                        "maxSelect": {
+                                          "type": "integer"
+                                        },
+                                        "sortOrder": {
+                                          "type": "integer"
+                                        },
+                                        "isActive": {
+                                          "type": "boolean"
+                                        },
+                                        "createdAt": {
+                                          "type": "string",
+                                          "format": "date-time"
+                                        },
+                                        "updatedAt": {
+                                          "type": "string",
+                                          "format": "date-time"
+                                        },
+                                        "options": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "object",
+                                            "properties": {
+                                              "id": {
+                                                "type": "string",
+                                                "format": "uuid"
+                                              },
+                                              "groupId": {
+                                                "type": "string",
+                                                "format": "uuid"
+                                              },
+                                              "name": {
+                                                "type": "string"
+                                              },
+                                              "priceDelta": {
+                                                "anyOf": [
+                                                  {
+                                                    "type": "string"
+                                                  },
+                                                  {
+                                                    "type": "number"
+                                                  }
+                                                ]
+                                              },
+                                              "isDefault": {
+                                                "type": "boolean"
+                                              },
+                                              "isActive": {
+                                                "type": "boolean"
+                                              },
+                                              "sortOrder": {
+                                                "type": "integer"
+                                              },
+                                              "recipeEffects": {
+                                                "type": "array",
+                                                "items": {
+                                                  "type": "object",
+                                                  "properties": {
+                                                    "id": {
+                                                      "type": "string",
+                                                      "format": "uuid"
+                                                    },
+                                                    "optionId": {
+                                                      "type": "string",
+                                                      "format": "uuid"
+                                                    },
+                                                    "ingredientId": {
+                                                      "type": "string",
+                                                      "format": "uuid"
+                                                    },
+                                                    "quantityDelta": {
+                                                      "anyOf": [
+                                                        {
+                                                          "type": "string"
+                                                        },
+                                                        {
+                                                          "type": "number"
+                                                        }
+                                                      ]
+                                                    },
+                                                    "ingredient": {
+                                                      "type": "object",
+                                                      "properties": {
+                                                        "id": {
+                                                          "type": "string",
+                                                          "format": "uuid"
+                                                        },
+                                                        "name": {
+                                                          "type": "string"
+                                                        },
+                                                        "unit": {
+                                                          "type": "string",
+                                                          "enum": [
+                                                            "EACH",
+                                                            "GRAM",
+                                                            "KILOGRAM",
+                                                            "MILLILITER",
+                                                            "LITER",
+                                                            "OUNCE",
+                                                            "POUND"
+                                                          ]
+                                                        },
+                                                        "unitCost": {
+                                                          "anyOf": [
+                                                            {
+                                                              "type": "string"
+                                                            },
+                                                            {
+                                                              "type": "number"
+                                                            },
+                                                            {
+                                                              "nullable": true
+                                                            }
+                                                          ]
+                                                        }
+                                                      },
+                                                      "required": [
+                                                        "id",
+                                                        "name",
+                                                        "unit",
+                                                        "unitCost"
+                                                      ]
+                                                    }
+                                                  },
+                                                  "required": [
+                                                    "id",
+                                                    "optionId",
+                                                    "ingredientId",
+                                                    "quantityDelta",
+                                                    "ingredient"
+                                                  ]
+                                                }
+                                              }
+                                            },
+                                            "required": [
+                                              "id",
+                                              "groupId",
+                                              "name",
+                                              "priceDelta",
+                                              "isDefault",
+                                              "isActive",
+                                              "sortOrder",
+                                              "recipeEffects"
+                                            ]
+                                          }
+                                        }
+                                      },
+                                      "required": [
+                                        "id",
+                                        "tenantId",
+                                        "name",
+                                        "minSelect",
+                                        "maxSelect",
+                                        "sortOrder",
+                                        "isActive",
+                                        "createdAt",
+                                        "updatedAt",
+                                        "options"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "group"
+                                  ]
+                                }
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "tenantId",
+                              "categoryId",
+                              "name",
+                              "description",
+                              "sku",
+                              "price",
+                              "isAvailable",
+                              "createdAt",
+                              "updatedAt",
+                              "category",
+                              "recipe",
+                              "modifierGroups"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "products"
+                      ]
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "success"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "status"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a menu product",
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "tenantId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 160
+                  },
+                  "categoryId": {
+                    "type": "string",
+                    "nullable": true,
+                    "format": "uuid"
+                  },
+                  "description": {
+                    "type": "string",
+                    "nullable": true,
+                    "maxLength": 1000
+                  },
+                  "sku": {
+                    "type": "string",
+                    "nullable": true,
+                    "maxLength": 80
+                  },
+                  "price": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "isAvailable": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "name",
+                  "price"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Product created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "product": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "tenantId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "categoryId": {
+                              "type": "string",
+                              "nullable": true,
+                              "format": "uuid"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "description": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "sku": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "price": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "number"
+                                }
+                              ]
+                            },
+                            "isAvailable": {
+                              "type": "boolean"
+                            },
+                            "createdAt": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "updatedAt": {
+                              "type": "string",
+                              "format": "date-time"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "tenantId",
+                            "categoryId",
+                            "name",
+                            "description",
+                            "sku",
+                            "price",
+                            "isAvailable",
+                            "createdAt",
+                            "updatedAt"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "product"
+                      ]
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "success"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "status"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tenants/{tenantId}/products/{id}": {
+      "patch": {
+        "summary": "Update a menu product",
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "tenantId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 160
+                  },
+                  "categoryId": {
+                    "type": "string",
+                    "nullable": true,
+                    "format": "uuid"
+                  },
+                  "description": {
+                    "type": "string",
+                    "nullable": true,
+                    "maxLength": 1000
+                  },
+                  "sku": {
+                    "type": "string",
+                    "nullable": true,
+                    "maxLength": 80
+                  },
+                  "price": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "isAvailable": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Product updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "product": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "tenantId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "categoryId": {
+                              "type": "string",
+                              "nullable": true,
+                              "format": "uuid"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "description": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "sku": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "price": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "number"
+                                }
+                              ]
+                            },
+                            "isAvailable": {
+                              "type": "boolean"
+                            },
+                            "createdAt": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "updatedAt": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "category": {
+                              "type": "object",
+                              "nullable": true,
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "format": "uuid"
+                                },
+                                "tenantId": {
+                                  "type": "string",
+                                  "format": "uuid"
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "sortOrder": {
+                                  "type": "integer"
+                                },
+                                "isActive": {
+                                  "type": "boolean"
+                                },
+                                "createdAt": {
+                                  "type": "string",
+                                  "format": "date-time"
+                                },
+                                "updatedAt": {
+                                  "type": "string",
+                                  "format": "date-time"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "tenantId",
+                                "name",
+                                "sortOrder",
+                                "isActive",
+                                "createdAt",
+                                "updatedAt"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "tenantId",
+                            "categoryId",
+                            "name",
+                            "description",
+                            "sku",
+                            "price",
+                            "isAvailable",
+                            "createdAt",
+                            "updatedAt",
+                            "category"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "product"
+                      ]
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "success"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "status"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a menu product",
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "tenantId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Product deleted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "deleted": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "deleted"
+                      ]
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "success"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "status"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tenants/{tenantId}/ingredients": {
+      "get": {
+        "summary": "List inventory ingredients",
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "tenantId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ingredients.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "ingredients": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "tenantId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "unit": {
+                                "type": "string",
+                                "enum": [
+                                  "EACH",
+                                  "GRAM",
+                                  "KILOGRAM",
+                                  "MILLILITER",
+                                  "LITER",
+                                  "OUNCE",
+                                  "POUND"
+                                ]
+                              },
+                              "unitCost": {
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "number"
+                                  },
+                                  {
+                                    "nullable": true
+                                  }
+                                ]
+                              },
+                              "isActive": {
+                                "type": "boolean"
+                              },
+                              "createdAt": {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              "updatedAt": {
+                                "type": "string",
+                                "format": "date-time"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "tenantId",
+                              "name",
+                              "unit",
+                              "unitCost",
+                              "isActive",
+                              "createdAt",
+                              "updatedAt"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "ingredients"
+                      ]
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "success"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "status"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tenants/{tenantId}/inventory": {
+      "get": {
+        "summary": "Read branch ingredient stock and recent movements",
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "tenantId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "branchId",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Branch inventory and recent movement history.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "branchId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "stock": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "tenantId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "branchId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "ingredientId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "quantity": {
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "number"
+                                  }
+                                ]
+                              },
+                              "averageCost": {
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "number"
+                                  }
+                                ]
+                              },
+                              "reorderLevel": {
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "number"
+                                  }
+                                ]
+                              },
+                              "updatedAt": {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              "ingredient": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "name": {
+                                    "type": "string"
+                                  },
+                                  "unit": {
+                                    "type": "string",
+                                    "enum": [
+                                      "EACH",
+                                      "GRAM",
+                                      "KILOGRAM",
+                                      "MILLILITER",
+                                      "LITER",
+                                      "OUNCE",
+                                      "POUND"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "name",
+                                  "unit"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "tenantId",
+                              "branchId",
+                              "ingredientId",
+                              "quantity",
+                              "averageCost",
+                              "reorderLevel",
+                              "updatedAt",
+                              "ingredient"
+                            ]
+                          }
+                        },
+                        "movements": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "tenantId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "branchId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "ingredientId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "purchaseId": {
+                                "type": "string",
+                                "nullable": true,
+                                "format": "uuid"
+                              },
+                              "salesOrderId": {
+                                "type": "string",
+                                "nullable": true,
+                                "format": "uuid"
+                              },
+                              "stocktakeId": {
+                                "type": "string",
+                                "nullable": true,
+                                "format": "uuid"
+                              },
+                              "type": {
+                                "type": "string"
+                              },
+                              "quantity": {
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "number"
+                                  }
+                                ]
+                              },
+                              "note": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "createdById": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "createdAt": {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              "ingredient": {
+                                "type": "object",
+                                "properties": {
+                                  "name": {
+                                    "type": "string"
+                                  },
+                                  "unit": {
+                                    "type": "string",
+                                    "enum": [
+                                      "EACH",
+                                      "GRAM",
+                                      "KILOGRAM",
+                                      "MILLILITER",
+                                      "LITER",
+                                      "OUNCE",
+                                      "POUND"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "name",
+                                  "unit"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "tenantId",
+                              "branchId",
+                              "ingredientId",
+                              "purchaseId",
+                              "salesOrderId",
+                              "stocktakeId",
+                              "type",
+                              "quantity",
+                              "note",
+                              "createdById",
+                              "createdAt",
+                              "ingredient"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "branchId",
+                        "stock",
+                        "movements"
+                      ]
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "success"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "status"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tenants/{tenantId}/inventory/adjustments": {
+      "post": {
+        "summary": "Record an auditable stock adjustment or waste movement",
+        "security": [
+          {
+            "accessCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "tenantId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "branchId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "ingredientId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "quantity": {
+                    "type": "number"
+                  },
+                  "reorderLevel": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "WASTE",
+                      "ADJUSTMENT"
+                    ]
+                  },
+                  "note": {
+                    "type": "string",
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "branchId",
+                  "ingredientId",
+                  "quantity",
+                  "type"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Stock updated and movement recorded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "stock": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "tenantId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "branchId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "ingredientId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "quantity": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "number"
+                                }
+                              ]
+                            },
+                            "averageCost": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "number"
+                                }
+                              ]
+                            },
+                            "reorderLevel": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "number"
+                                }
+                              ]
+                            },
+                            "updatedAt": {
+                              "type": "string",
+                              "format": "date-time"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "tenantId",
+                            "branchId",
+                            "ingredientId",
+                            "quantity",
+                            "averageCost",
+                            "reorderLevel",
+                            "updatedAt"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "stock"
+                      ]
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "success"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "status"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The movement would make available stock negative.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "nullable": true
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "error"
+                      ]
+                    },
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        },
+                        "requestId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "status",
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/tenants/{tenantId}/orders": {
       "post": {
         "summary": "Create a POS order with server-calculated prices and optional offline idempotency",
@@ -8881,12 +10688,10 @@
                           "type": "object",
                           "properties": {
                             "from": {
-                              "type": "string",
-                              "format": "date-time"
+                              "type": "string"
                             },
                             "to": {
-                              "type": "string",
-                              "format": "date-time"
+                              "type": "string"
                             }
                           },
                           "required": [
@@ -8898,26 +10703,119 @@
                           "type": "string"
                         },
                         "summary": {
-                          "nullable": true
+                          "type": "object",
+                          "properties": {
+                            "orderCount": {
+                              "type": "number"
+                            },
+                            "grossSales": {
+                              "type": "number"
+                            },
+                            "netSales": {
+                              "type": "number"
+                            },
+                            "refunds": {
+                              "type": "number"
+                            },
+                            "refundCount": {
+                              "type": "number"
+                            },
+                            "expenses": {
+                              "type": "number"
+                            },
+                            "profit": {
+                              "type": "number"
+                            },
+                            "operatingProfitBeforeIncomeTax": {
+                              "type": "number"
+                            },
+                            "foodCostPercent": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "orderCount",
+                            "grossSales",
+                            "netSales",
+                            "refunds",
+                            "refundCount"
+                          ]
                         },
                         "daily": {
                           "type": "array",
                           "items": {
-                            "nullable": true
+                            "type": "object",
+                            "properties": {
+                              "date": {
+                                "type": "string"
+                              },
+                              "orders": {
+                                "type": "number"
+                              },
+                              "sales": {
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "date",
+                              "orders",
+                              "sales"
+                            ]
                           }
                         },
                         "bestSellers": {
                           "type": "array",
                           "items": {
-                            "nullable": true
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "quantity": {
+                                "type": "number"
+                              },
+                              "sales": {
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name",
+                              "quantity",
+                              "sales"
+                            ]
+                          }
+                        },
+                        "paymentBreakdown": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "method": {
+                                "type": "string"
+                              },
+                              "amount": {
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "method",
+                              "amount"
+                            ]
                           }
                         }
                       },
                       "required": [
                         "range",
                         "currency",
+                        "summary",
                         "daily",
-                        "bestSellers"
+                        "bestSellers",
+                        "paymentBreakdown"
                       ]
                     },
                     "status": {
@@ -9033,13 +10931,231 @@
                         "lowStock": {
                           "type": "array",
                           "items": {
-                            "nullable": true
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "tenantId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "branchId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "ingredientId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "quantity": {
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "number"
+                                  }
+                                ]
+                              },
+                              "averageCost": {
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "number"
+                                  }
+                                ]
+                              },
+                              "reorderLevel": {
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "number"
+                                  }
+                                ]
+                              },
+                              "updatedAt": {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              "ingredient": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "name": {
+                                    "type": "string"
+                                  },
+                                  "unit": {
+                                    "type": "string",
+                                    "enum": [
+                                      "EACH",
+                                      "GRAM",
+                                      "KILOGRAM",
+                                      "MILLILITER",
+                                      "LITER",
+                                      "OUNCE",
+                                      "POUND"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "name",
+                                  "unit"
+                                ]
+                              },
+                              "branch": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "name": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "name"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "tenantId",
+                              "branchId",
+                              "ingredientId",
+                              "quantity",
+                              "averageCost",
+                              "reorderLevel",
+                              "updatedAt",
+                              "ingredient",
+                              "branch"
+                            ]
                           }
                         },
                         "movements": {
                           "type": "array",
                           "items": {
-                            "nullable": true
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "tenantId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "branchId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "ingredientId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "purchaseId": {
+                                "type": "string",
+                                "nullable": true,
+                                "format": "uuid"
+                              },
+                              "salesOrderId": {
+                                "type": "string",
+                                "nullable": true,
+                                "format": "uuid"
+                              },
+                              "stocktakeId": {
+                                "type": "string",
+                                "nullable": true,
+                                "format": "uuid"
+                              },
+                              "type": {
+                                "type": "string"
+                              },
+                              "quantity": {
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "number"
+                                  }
+                                ]
+                              },
+                              "note": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "createdById": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "createdAt": {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              "ingredient": {
+                                "type": "object",
+                                "properties": {
+                                  "name": {
+                                    "type": "string"
+                                  },
+                                  "unit": {
+                                    "type": "string",
+                                    "enum": [
+                                      "EACH",
+                                      "GRAM",
+                                      "KILOGRAM",
+                                      "MILLILITER",
+                                      "LITER",
+                                      "OUNCE",
+                                      "POUND"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "name",
+                                  "unit"
+                                ]
+                              },
+                              "branch": {
+                                "type": "object",
+                                "properties": {
+                                  "name": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "name"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "tenantId",
+                              "branchId",
+                              "ingredientId",
+                              "purchaseId",
+                              "salesOrderId",
+                              "stocktakeId",
+                              "type",
+                              "quantity",
+                              "note",
+                              "createdById",
+                              "createdAt",
+                              "ingredient",
+                              "branch"
+                            ]
                           }
                         },
                         "valuation": {

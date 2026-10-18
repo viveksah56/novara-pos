@@ -1,7 +1,8 @@
 import { apiClient, apiRequest } from "@/lib/api-client";
 import type { BranchSettingsInput, TenantProfileInput } from "@/features/tenancy/schemas/tenancySchemas";
+import type { TenantStatus } from "@/constants/system-constants";
 
-export type TenantProfile = TenantProfileInput & { id: string; slug: string; status: "ACTIVE" | "SUSPENDED"; currency: string };
+export type TenantProfile = TenantProfileInput & { id: string; slug: string; status: TenantStatus; currency: string };
 export type BranchSettings = Omit<BranchSettingsInput, "taxRate" | "serviceChargeRate" | "shiftVarianceTolerance" | "cashierMaxDiscountPercent"> & {
   id: string; tenantId: string; isActive: boolean; createdAt: string; updatedAt: string;
   taxRate: number | string; serviceChargeRate: number | string; shiftVarianceTolerance: number | string; cashierMaxDiscountPercent: number | string;

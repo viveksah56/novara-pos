@@ -1,12 +1,11 @@
 import { apiClient, apiRequest } from "@/lib/api-client";
+import type { ApiRequestBody, ApiResponseData } from "@/types/api-contract";
 
-export type Ingredient = { id: string; name: string; unit: string; unitCost: number | string | null; isActive: boolean };
-export type StockItem = {
-  id: string;
-  quantity: number | string;
-  reorderLevel: number | string;
-  ingredient: Ingredient;
-};
+type IngredientsResponse = ApiResponseData<"/tenants/{tenantId}/ingredients", "get">;
+type InventoryResponse = ApiResponseData<"/tenants/{tenantId}/inventory", "get">;
+export type Ingredient = IngredientsResponse extends { ingredients: (infer IngredientRecord)[] } ? IngredientRecord : never;
+export type StockItem = InventoryResponse extends { stock: (infer StockRecord)[] } ? StockRecord : never;
+export type StockAdjustmentInput = ApiRequestBody<"/tenants/{tenantId}/inventory/adjustments", "post">;
 
 export async function getIngredients(tenantId: string): Promise<Ingredient[]> {
   const result = await apiRequest<{ ingredients: Ingredient[] }>(apiClient.get(`/tenants/${tenantId}/ingredients`));
@@ -14,7 +13,11 @@ export async function getIngredients(tenantId: string): Promise<Ingredient[]> {
 }
 
 export async function getStock(tenantId: string, branchId: string) {
-  return apiRequest<{ stock: StockItem[]; movements: Record<string, unknown>[]; branchId: string }>(
+  return apiRequest<InventoryResponse>(
     apiClient.get(`/tenants/${tenantId}/inventory`, { params: { branchId } }),
   );
+}
+
+export async function recordStockAdjustment(tenantId: string, input: StockAdjustmentInput): Promise<void> {
+  await apiRequest(apiClient.post(`/tenants/${tenantId}/inventory/adjustments`, input));
 }

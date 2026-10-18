@@ -20,17 +20,18 @@ import {
   Package,
   PackagePlus,
   Pencil,
-  Search,
   ShoppingBag,
   Settings,
   Truck,
   Users,
   UtensilsCrossed,
   Trash2,
+  Plus,
 } from "lucide-react";
 import type { WorkspaceNavGroup } from "@/components/layout/WorkspaceSidebar";
 import { WorkspaceSearch } from "@/components/layout/WorkspaceSearch";
 import { DataTable } from "@/components/data-table/DataTable";
+import { SearchBar } from "@/components/shared/SearchBar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -45,6 +46,12 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { authApi, authQueryKeys } from "@/features/auth/api";
 import { useMenuCategories, useMenuProducts } from "@/features/menu/hooks/useMenuQueries";
 import { useIngredients, useStock } from "@/features/inventory/hooks/useInventoryQueries";
+import { ProductImportDialog } from "@/features/menu/components/ProductImportDialog";
+import { ProductCatalog } from "@/features/menu/components/ProductCatalog";
+import type { MenuProduct } from "@/features/menu/api/menuApi";
+import { InventoryImportDialog } from "@/features/inventory/components/InventoryImportDialog";
+import { InventoryStockTable } from "@/features/inventory/components/InventoryStockTable";
+import type { StockItem } from "@/features/inventory/api/inventoryApi";
 import { usePurchaseOrders, useSuppliers } from "@/features/purchasing/hooks/usePurchases";
 import { placePurchaseOrder, receivePurchase } from "@/features/purchasing/api/purchasingApi";
 import { categoryFormSchema, productFormSchema } from "@/features/menu/schemas/menuSchemas";
@@ -215,7 +222,7 @@ export function OperationsConsolePage({
   const products = useMenuProducts(activeTenantId, module === "recipes");
   const ingredients = useIngredients(activeTenantId, ["recipes", "inventory", "purchases"].includes(module));
   const suppliers = useSuppliers(activeTenantId, module === "purchases");
-  const stock = useStock(activeTenantId, selectedBranchId, module === "inventory");
+  const stock = useStock(activeTenantId, selectedBranchId, module === "inventory" || module === "products");
   const purchaseOrders = usePurchaseOrders(activeTenantId, module === "purchases");
   const receiveMutation = useMutation({
     mutationFn: () => receivePurchase(activeTenantId, String(receivingPurchase?.id ?? ""), Object.entries(receivingQuantities).filter(([, value]) => Number(value) > 0).map(([purchaseItemId, value]) => ({ purchaseItemId, quantity: Number(value) }))),
@@ -365,11 +372,10 @@ export function OperationsConsolePage({
     onError: (reason) => setError(getErrorMessage(reason)),
   });
   const filteredRows = useMemo(
-    () =>
-      (rowsQuery.data ?? []).filter((row) =>
-        JSON.stringify(row).toLowerCase().includes(search.trim().toLowerCase()),
-      ),
-    [rowsQuery.data, search],
+    () => module === "inventory"
+      ? rowsQuery.data ?? []
+      : (rowsQuery.data ?? []).filter((row) => JSON.stringify(row).toLowerCase().includes(search.trim().toLowerCase())),
+    [module, rowsQuery.data, search],
   );
   const title = moduleTitles[module];
   const canManage =
@@ -415,12 +421,6 @@ export function OperationsConsolePage({
       { label: "Help & feedback", href: "/feedback", icon: LifeBuoy },
     ] },
   ];
-  const sidebarFooter = (
-    <div className="truncate rounded-xl bg-sidebar-accent p-3 text-xs text-muted-foreground">
-      {activeMembership?.tenant.name ?? "Your workspace"}
-      <p className="mt-1 capitalize">{activeRole.toLowerCase().replaceAll("_", " ")}</p>
-    </div>
-  );
   const columnKeys = filteredRows[0]
     ? Object.keys(filteredRows[0])
         .filter(
@@ -854,17 +854,17 @@ export function OperationsConsolePage({
               />
             ) : null}
           </div>
-          {module === "inventory" || module === "purchases" ? (
-            <div className="mb-4 flex items-center gap-3 rounded-xl border border-border bg-card p-3">
-              <label className="text-xs font-medium text-muted-foreground">
-                {module === "inventory" ? "Branch" : "Receiving branch"}
+          {module === "inventory" || module === "purchases" || module === "products" ? (
+            <div className="mb-3 flex flex-col gap-2 rounded-xl border border-border bg-card p-3 sm:flex-row sm:items-center">
+              <label className="shrink-0 text-xs font-medium text-muted-foreground">
+                {module === "products" ? "Stock estimate branch" : module === "inventory" ? "Branch" : "Receiving branch"}
               </label>
               <SelectField
                 aria-label="Inventory branch"
                 value={selectedBranchId}
                 onValueChange={setBranchId}
                 options={(branches.data ?? []).map((branch) => ({ value: String(branch.id), label: String(branch.name) }))}
-                triggerClassName="min-w-48"
+                triggerClassName="w-full sm:min-w-48 sm:max-w-sm"
               />
             </div>
           ) : null}
@@ -886,7 +886,37 @@ export function OperationsConsolePage({
               {error}
             </p>
           ) : null}
-          {canManage ? (
+          {canManageMenu && module === "products" ? (
+            <div className="mb-5 flex flex-wrap items-center justify-end gap-2">
+              <ProductImportDialog
+                tenantId={activeTenantId}
+                categories={categories.data ?? []}
+                products={(generalRowsQuery.data ?? []) as unknown as MenuProduct[]}
+                onComplete={async () => {
+                  await Promise.all([
+                    queryClient.invalidateQueries({ queryKey: ["operations", activeTenantId, "products"] }),
+                    queryClient.invalidateQueries({ queryKey: ["menu", activeTenantId] }),
+                  ]);
+                }}
+              />
+              <Button type="button" onClick={() => { setForm({ isAvailable: "true" }); setEditingId(null); setFormOpen(true); setError(""); }}><Plus aria-hidden />Add product</Button>
+            </div>
+          ) : null}
+          {canManage && module === "inventory" ? (
+            <div className="mb-4 flex flex-col gap-3 rounded-xl border border-border/75 bg-card p-3 sm:flex-row sm:items-center sm:justify-between sm:px-4">
+              <div><p className="text-sm font-medium">Stock movement</p><p className="mt-0.5 text-xs text-muted-foreground">Record a receipt, correction, or waste for {String(branches.data?.find((branch) => String(branch.id) === selectedBranchId)?.name ?? "this branch")}.</p></div>
+              <div className="flex flex-wrap gap-2">
+                <InventoryImportDialog
+                  tenantId={activeTenantId}
+                  branchId={selectedBranchId}
+                  ingredients={(ingredients.data ?? []).map((ingredient) => ({ id: ingredient.id, name: ingredient.name, unit: ingredient.unit }))}
+                  onComplete={async () => { await queryClient.invalidateQueries({ queryKey: ["inventory", activeTenantId] }); }}
+                />
+                <Button type="button" onClick={() => { setForm({ type: "ADJUSTMENT" }); setEditingId(null); setFormOpen(true); setError(""); }}><Plus aria-hidden />Adjust stock</Button>
+              </div>
+            </div>
+          ) : null}
+          {canManage && module !== "products" && module !== "inventory" ? (
             <details className="mb-5 rounded-2xl border border-border bg-card" open={formOpen} onToggle={(event) => setFormOpen(event.currentTarget.open)}>
               <summary className="cursor-pointer list-none p-4 text-sm font-semibold">
                 {editingId ? `Edit ${title.toLowerCase().replace(/s$/, "")}` : `Add ${title.toLowerCase().replace(/s$/, "")}`}{" "}
@@ -924,16 +954,13 @@ export function OperationsConsolePage({
                   {activeMembership.tenant.name}
                 </p>
               </div>
-              <label className="relative block w-full sm:max-w-xs">
-                <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  className="h-9 pl-9"
-                  placeholder={`Search ${title.toLowerCase()}…`}
-                  aria-label={`Search ${title}`}
-                />
-              </label>
+              {module !== "inventory" ? <SearchBar
+                value={search}
+                onValueChange={setSearch}
+                className="sm:max-w-xs"
+                placeholder={`Search ${title.toLowerCase()}…`}
+                ariaLabel={`Search ${title}`}
+              /> : null}
             </div>
             {rowsQuery.isPending ? (
               <div className="space-y-3 p-5">
@@ -951,6 +978,44 @@ export function OperationsConsolePage({
                 >
                   Retry
                 </Button>
+              </div>
+            ) : module === "inventory" ? (
+              <div className="p-3 sm:p-4">
+                <InventoryStockTable
+                  rows={(rowsQuery.data ?? []) as unknown as StockItem[]}
+                  branchName={String(branches.data?.find((branch) => String(branch.id) === selectedBranchId)?.name ?? "Selected branch")}
+                  search={search}
+                  onSearchChange={setSearch}
+                  onAdjust={(row) => {
+                    setForm({ ingredientId: row.ingredient.id, quantity: "", type: "ADJUSTMENT", reorderLevel: String(row.reorderLevel), note: "" });
+                    setEditingId(null);
+                    setFormOpen(true);
+                    setError("");
+                  }}
+                />
+              </div>
+            ) : module === "products" ? (
+              <div className="p-4 sm:p-5">
+                <ProductCatalog
+                  products={filteredRows as unknown as MenuProduct[]}
+                  stock={stock.data?.stock ?? []}
+                  stockReady={!stock.isPending && !stock.isError}
+                  search={search}
+                  onEdit={(product) => {
+                    setForm({
+                      name: product.name,
+                      categoryId: product.categoryId ?? "",
+                      description: product.description ?? "",
+                      sku: product.sku ?? "",
+                      price: String(product.price),
+                      isAvailable: String(product.isAvailable),
+                    });
+                    setEditingId(product.id);
+                    setFormOpen(true);
+                    setError("");
+                  }}
+                  onDelete={(product) => setDeleteAction({ kind: "DELETE_RECORD", subject: product.name, resourceId: product.id })}
+                />
               </div>
             ) : (
               <DataTable
@@ -988,6 +1053,26 @@ export function OperationsConsolePage({
           <DialogFooter><Button type="button" variant="outline" disabled={receiveMutation.isPending} onClick={() => setReceivingPurchase(null)}>Cancel</Button><Button type="button" disabled={!validReceiveLines.length || receiveMutation.isPending} onClick={() => receiveMutation.mutate()}><PackagePlus aria-hidden />{receiveMutation.isPending ? "Receiving…" : `Receive ${validReceiveLines.length} line${validReceiveLines.length === 1 ? "" : "s"}`}</Button></DialogFooter>
         </DialogContent>
       </Dialog>
+      {module === "products" ? <Dialog open={formOpen} onOpenChange={(open) => { if (!saveMutation.isPending) setFormOpen(open); }}>
+        <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-xl">
+          <DialogHeader><DialogTitle>{editingId ? "Edit product" : "Add product"}</DialogTitle><DialogDescription>Set the menu details and availability. Ingredient stock is estimated from recipes and the selected branch.</DialogDescription></DialogHeader>
+          {error ? <p role="alert" className="rounded-lg border border-destructive/25 bg-destructive/5 p-3 text-sm text-destructive">{error}</p> : null}
+          <form className="grid gap-4 sm:grid-cols-2" onSubmit={(event) => { event.preventDefault(); setError(""); saveMutation.mutate(); }}>
+            {formFields()}
+            <DialogFooter className="sm:col-span-2"><Button type="button" variant="outline" disabled={saveMutation.isPending} onClick={() => setFormOpen(false)}>Cancel</Button><Button type="submit" disabled={saveMutation.isPending}>{saveMutation.isPending ? "Saving…" : editingId ? "Save changes" : "Create product"}<ArrowRight aria-hidden /></Button></DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog> : null}
+      {module === "inventory" ? <Dialog open={formOpen} onOpenChange={(open) => { if (!saveMutation.isPending) setFormOpen(open); }}>
+        <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-xl">
+          <DialogHeader><DialogTitle>Adjust branch stock</DialogTitle><DialogDescription>Record a signed stock quantity change. Waste movements are always deducted and all changes are added to the stock ledger.</DialogDescription></DialogHeader>
+          {error ? <p role="alert" className="rounded-lg border border-destructive/25 bg-destructive/5 p-3 text-sm text-destructive">{error}</p> : null}
+          <form className="grid gap-4 sm:grid-cols-2" onSubmit={(event) => { event.preventDefault(); setError(""); saveMutation.mutate(); }}>
+            {formFields()}
+            <DialogFooter className="sm:col-span-2"><Button type="button" variant="outline" disabled={saveMutation.isPending} onClick={() => setFormOpen(false)}>Cancel</Button><Button type="submit" disabled={saveMutation.isPending}>{saveMutation.isPending ? "Saving…" : "Record movement"}<ArrowRight aria-hidden /></Button></DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog> : null}
       {deleteAction ? (
         <ActionDialog
           action={deleteAction}

@@ -2,11 +2,11 @@
 
 import { useMemo, useState, type ReactNode } from "react";
 import { formatDateTime } from "@/lib/formatDateTime";
-import { usePathname, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Activity, BarChart3, Building2, CalendarDays, CircleDollarSign, CreditCard, LayoutDashboard, Package, Plus, ReceiptText, Users } from "lucide-react";
+import { Activity, CalendarDays, CircleDollarSign, Plus, ReceiptText } from "lucide-react";
 import { DataTable, type DataColumn } from "@/components/data-table/DataTable";
-import type { WorkspaceNavGroup } from "@/components/layout/WorkspaceSidebar";
+import { ConfirmReasonModal } from "@/components/ui/confirm-reason-modal";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -23,7 +23,6 @@ function monthEnd(value: string) { const [year, month] = value.split("-").map(Nu
 
 export function ExpensesPage() {
   const params = useSearchParams();
-  const pathname = usePathname();
   const queryClient = useQueryClient();
   const profile = useQuery({ queryKey: authQueryKeys.loggedInUser, queryFn: authApi.getLoggedInUser, retry: false });
   const memberships = profile.data?.memberships ?? [];
@@ -36,7 +35,6 @@ export function ExpensesPage() {
   const [addOpen, setAddOpen] = useState(false);
   const [categoryName, setCategoryName] = useState("");
   const [voidTarget, setVoidTarget] = useState<ExpenseRecord | null>(null);
-  const [voidReason, setVoidReason] = useState("");
   const [form, setForm] = useState({ branchId: "", categoryId: "", amount: "", expenseDate: new Date().toISOString().slice(0, 10), description: "", paymentMethod: "CASH" as ExpensePaymentMethod, reference: "" });
   const queryBranch = branchId && branchId !== "all" ? branchId : undefined;
   const categories = useQuery({ queryKey: ["expenses", tenantId, "categories"], queryFn: () => getExpenseCategories(tenantId), enabled: Boolean(tenantId && ["OWNER", "MANAGER"].includes(role)), retry: false });
@@ -44,7 +42,7 @@ export function ExpensesPage() {
   const invalidateExpenses = async () => { await queryClient.invalidateQueries({ queryKey: ["expenses", tenantId] }); await queryClient.invalidateQueries({ queryKey: ["reports", tenantId] }); };
   const createMutation = useMutation({ mutationFn: () => createExpense(tenantId, { ...form, amount: Number(form.amount), ...(form.reference.trim() ? { reference: form.reference.trim() } : {}) }), onSuccess: async () => { setAddOpen(false); setForm((current) => ({ ...current, amount: "", description: "", reference: "" })); await invalidateExpenses(); } });
   const categoryMutation = useMutation({ mutationFn: () => createExpenseCategory(tenantId, categoryName.trim()), onSuccess: async (result) => { setCategoryName(""); await queryClient.invalidateQueries({ queryKey: ["expenses", tenantId, "categories"] }); setForm((current) => ({ ...current, categoryId: result.category.id })); } });
-  const voidMutation = useMutation({ mutationFn: () => voidExpense(tenantId, voidTarget!.id, voidReason.trim()), onSuccess: async () => { setVoidTarget(null); setVoidReason(""); await invalidateExpenses(); } });
+  const voidMutation = useMutation({ mutationFn: ({ target, reason }: { target: ExpenseRecord; reason: string }) => voidExpense(tenantId, target.id, reason), onSuccess: async () => { setVoidTarget(null); await invalidateExpenses(); } });
   const allRows = expenses.data?.expenses ?? [];
   const rows = allRows.filter((expense) => branchId === "all" || !branchId || expense.branch.id === branchId);
   const total = rows.filter((row) => !row.voidedAt).reduce((sum, row) => sum + Number(row.amount), 0);
@@ -56,11 +54,6 @@ export function ExpensesPage() {
     { id: "paymentMethod", header: "Method", accessorFn: (row) => row.paymentMethod, cell: (row) => row.paymentMethod.replaceAll("_", " ").toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase()) },
     { id: "createdBy", header: "Recorded by", accessorFn: (row) => row.createdBy.name, cell: (row) => row.createdBy.name },
     { id: "status", header: "Status", accessorFn: (row) => row.voidedAt ? "Voided" : "Active", cell: (row) => row.voidedAt ? <span className="rounded-full bg-destructive/10 px-2.5 py-1 text-xs text-destructive" title={row.voidReason ?? undefined}>Voided</span> : <span className="text-xs text-emerald-700 dark:text-emerald-400">Recorded</span> },
-  ];
-  const navGroups: WorkspaceNavGroup[] = [
-    { label: "Workspace", items: [{ label: "Overview", href: "/dashboard", icon: LayoutDashboard, allowed: ["OWNER", "MANAGER"].includes(role) }, { label: "Point of sale", href: "/pos", icon: CreditCard, capability: "orders.create" }, { label: "Orders", href: "/orders", icon: ReceiptText, capability: "orders.read" }] },
-    { label: "Finance", items: [{ label: "Sales reports", href: "/reports", icon: BarChart3, capability: "reports.sales.read" }, { label: "Expenses", href: "/expenses", icon: CircleDollarSign, capability: "expenses.read" }] },
-    { label: "Business", items: [{ label: "Team", href: "/team", icon: Users, allowed: ["OWNER", "MANAGER"].includes(role) }, { label: "Branches", href: "/settings/branches", icon: Building2, allowed: role === "OWNER" }, { label: "Inventory", href: "/inventory", icon: Package, capability: "inventory.read" }] },
   ];
   const submitAllowed = Boolean(form.branchId && form.categoryId && Number(form.amount) > 0 && form.description.trim().length >= 2);
   const pageError = profile.error ?? categories.error ?? expenses.error;
@@ -84,7 +77,7 @@ export function ExpensesPage() {
     <div className="sm:col-span-2"><Field label="Description"><Input value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} maxLength={1000} placeholder="What was this expense for?" /></Field></div>
     {createMutation.error || categoryMutation.error ? <p role="alert" className="sm:col-span-2 text-sm text-destructive">{getErrorMessage(createMutation.error ?? categoryMutation.error)}</p> : null}
   </div><DialogFooter><Button variant="outline" onClick={() => setAddOpen(false)} disabled={createMutation.isPending}>Cancel</Button><Button disabled={!submitAllowed || createMutation.isPending} onClick={() => createMutation.mutate()}>{createMutation.isPending ? "Saving…" : "Save expense"}</Button></DialogFooter></DialogContent></Dialog>
-  <Dialog open={Boolean(voidTarget)} onOpenChange={(open) => { if (!open && !voidMutation.isPending) { setVoidTarget(null); setVoidReason(""); } }}><DialogContent><DialogHeader><DialogTitle>Void expense</DialogTitle><DialogDescription>This keeps an audit record. Any linked cash payout is reversed back into the shift ledger.</DialogDescription></DialogHeader><label className="grid gap-2 text-sm font-medium">Reason<Input value={voidReason} onChange={(event) => setVoidReason(event.target.value)} maxLength={500} placeholder="Explain why this is being voided" /></label>{voidMutation.error ? <p role="alert" className="text-sm text-destructive">{getErrorMessage(voidMutation.error)}</p> : null}<DialogFooter><Button variant="outline" onClick={() => setVoidTarget(null)}>Cancel</Button><Button variant="destructive" disabled={voidReason.trim().length < 3 || voidMutation.isPending} onClick={() => voidMutation.mutate()}>{voidMutation.isPending ? "Voiding…" : "Void expense"}</Button></DialogFooter></DialogContent></Dialog>
+  <ConfirmReasonModal target={voidTarget} open={Boolean(voidTarget)} onOpenChange={(open) => { if (!open && !voidMutation.isPending) setVoidTarget(null); }} onConfirm={(target, reason) => voidMutation.mutate({ target, reason })} title="Void expense" description="This keeps an audit record. Any linked cash payout is reversed back into the shift ledger." placeholder="Explain why this is being voided" confirmLabel="Void expense" pendingLabel="Voiding…" confirmVariant="destructive" pending={voidMutation.isPending} error={voidMutation.error ? getErrorMessage(voidMutation.error) : undefined} />
   </>;
 }
 

@@ -5,6 +5,7 @@ import { HttpError } from "@lib/http-error.js";
 import { prisma } from "@lib/prisma.js";
 import { requireAuth } from "@middleware/auth.js";
 import { requirePlatformRole } from "@middleware/platform-auth.js";
+import { PLATFORM_TICKET_PRIORITY_VALUES, PLATFORM_TICKET_STATUS_VALUES, PLATFORM_TICKET_TYPE_VALUES, TENANT_STATUS_VALUES } from "../../constants/system-constants.js";
 import {
   addSupportAgent, createPlan, deletePlan, getBusiness, getPlatformOverview,
   getSystemHealth, listBusinesses, listPlans, listSupportAgents, removeSupportAgent,
@@ -14,7 +15,7 @@ import {
 } from "@modules/platform/platform.service.js";
 
 const idSchema = z.string().uuid();
-const statusSchema = z.enum(["ACTIVE", "SUSPENDED"]);
+const statusSchema = z.enum(TENANT_STATUS_VALUES);
 const planFields = {
   name: z.string().trim().min(2).max(100),
   description: z.string().trim().max(500).nullable().optional(),
@@ -38,7 +39,7 @@ platformRouter.use(requireAuth);
 platformRouter.post("/feedback", async (request, response) => {
   const userId = request.auth?.userId;
   if (!userId) throw new HttpError(401, "UNAUTHENTICATED", "Please sign in to continue.");
-  const input = z.object({ tenantId: idSchema.optional(), type: z.enum(["COMPLAINT", "FEEDBACK", "SUPPORT"]), subject: z.string().trim().min(4).max(160), message: z.string().trim().min(10).max(5000) }).superRefine((value, context) => {
+  const input = z.object({ tenantId: idSchema.optional(), type: z.enum(PLATFORM_TICKET_TYPE_VALUES), subject: z.string().trim().min(4).max(160), message: z.string().trim().min(10).max(5000) }).superRefine((value, context) => {
     if (value.type === "COMPLAINT" && !value.tenantId) context.addIssue({ code: "custom", path: ["tenantId"], message: "A complaint must be linked to a business workspace." });
   }).parse(request.body);
   sendSuccess(response, { ticket: await createPlatformTicket(userId, input) }, 201);
@@ -62,7 +63,7 @@ platformRouter.patch("/businesses/:tenantId/complaints/:ticketId", async (reques
   if (!userId) throw new HttpError(401, "UNAUTHENTICATED", "Please sign in to continue.");
   const tenantId = idSchema.parse(Array.isArray(request.params.tenantId) ? request.params.tenantId[0] : request.params.tenantId);
   const ticketId = idSchema.parse(Array.isArray(request.params.ticketId) ? request.params.ticketId[0] : request.params.ticketId);
-  const input = z.object({ status: z.enum(["OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED"]) }).parse(request.body);
+  const input = z.object({ status: z.enum(PLATFORM_TICKET_STATUS_VALUES) }).parse(request.body);
   sendSuccess(response, { ticket: await updateTenantComplaint(userId, tenantId, ticketId, input) });
 });
 
@@ -73,7 +74,7 @@ platformRouter.get("/tickets", requirePlatformRole("SUPER_ADMIN", "SUPPORT_AGENT
 
 platformRouter.patch("/tickets/:ticketId", requirePlatformRole("SUPER_ADMIN", "SUPPORT_AGENT"), async (request, response) => {
   const ticketId = idSchema.parse(Array.isArray(request.params.ticketId) ? request.params.ticketId[0] : request.params.ticketId);
-  const input = z.object({ status: z.enum(["OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED"]), priority: z.enum(["LOW", "NORMAL", "HIGH", "URGENT"]).optional() }).parse(request.body);
+  const input = z.object({ status: z.enum(PLATFORM_TICKET_STATUS_VALUES), priority: z.enum(PLATFORM_TICKET_PRIORITY_VALUES).optional() }).parse(request.body);
   sendSuccess(response, { ticket: await updatePlatformTicket(ticketId, input, request.platformRole ?? "SUPPORT_AGENT") });
 });
 

@@ -1,7 +1,9 @@
 /** Capabilities used by the optimistic route guard. The API repeats every check. */
-export type BusinessRole = "OWNER" | "MANAGER" | "CASHIER" | "WAITER" | "KITCHEN_STAFF" | "INVENTORY_MANAGER";
-export type PlatformRole = "SUPER_ADMIN" | "PLATFORM_ADMIN" | "SUPPORT_AGENT";
-export type Capability = "reports.sales.read" | "reports.inventory.read" | "reports.profit.read" | "inventory.read" | "inventory.adjust" | "menu.read" | "menu.manage" | "staff.read" | "expenses.read" | "expenses.manage" | "settings.read" | "settings.manage" | "orders.create" | "orders.read" | "orders.update" | "orders.pay" | "orders.refund" | "receipts.print" | "discounts.apply" | "shifts.read" | "shifts.review" | "kitchen.orders.read" | "kitchen.orders.update" | "purchases.manage" | "suppliers.manage" | "subscription.manage" | "audit.read";
+import { BUSINESS_ROLE_CAPABILITIES, BUSINESS_ROLE_VALUES, type AppRole, type BusinessRole, type Capability, type PlatformRole as PersistedPlatformRole } from "@/constants/system-constants";
+
+export type { BusinessRole, Capability } from "@/constants/system-constants";
+export type PlatformRole = PersistedPlatformRole | "PLATFORM_ADMIN";
+export type WorkspaceRole = AppRole;
 
 export const ROUTE_CAPABILITIES: ReadonlyArray<{ path: string; capability: Capability }> = [
   { path: "/dashboard/reports", capability: "reports.sales.read" },
@@ -27,14 +29,10 @@ export const ROUTE_CAPABILITIES: ReadonlyArray<{ path: string; capability: Capab
   { path: "/kitchen", capability: "kitchen.orders.read" },
 ];
 
-export const ROLE_CAPABILITIES: Record<BusinessRole, ReadonlySet<Capability>> = {
-  OWNER: new Set(["reports.sales.read", "reports.inventory.read", "reports.profit.read", "inventory.read", "inventory.adjust", "menu.read", "menu.manage", "staff.read", "expenses.read", "expenses.manage", "settings.read", "settings.manage", "orders.create", "orders.read", "orders.update", "orders.pay", "orders.refund", "receipts.print", "discounts.apply", "shifts.read", "shifts.review", "kitchen.orders.read", "kitchen.orders.update", "purchases.manage", "suppliers.manage", "subscription.manage", "audit.read"]),
-  MANAGER: new Set(["reports.sales.read", "reports.inventory.read", "inventory.read", "inventory.adjust", "menu.read", "menu.manage", "staff.read", "expenses.read", "expenses.manage", "settings.read", "orders.create", "orders.read", "orders.update", "orders.pay", "orders.refund", "receipts.print", "discounts.apply", "shifts.read", "shifts.review", "purchases.manage", "suppliers.manage"]),
-  CASHIER: new Set(["menu.read", "orders.create", "orders.read", "orders.pay", "receipts.print", "discounts.apply", "shifts.read"]),
-  WAITER: new Set(["menu.read", "orders.create", "orders.read", "orders.update"]),
-  KITCHEN_STAFF: new Set(["kitchen.orders.read", "kitchen.orders.update"]),
-  INVENTORY_MANAGER: new Set(["menu.read", "inventory.read", "inventory.adjust", "reports.inventory.read", "purchases.manage", "suppliers.manage"]),
-};
+export const ROLE_CAPABILITIES = BUSINESS_ROLE_VALUES.reduce((roles, role) => {
+  roles[role] = new Set(BUSINESS_ROLE_CAPABILITIES[role]);
+  return roles;
+}, {} as Record<BusinessRole, ReadonlySet<Capability>>);
 
 
 export function capabilityForPath(pathname: string): Capability | undefined {

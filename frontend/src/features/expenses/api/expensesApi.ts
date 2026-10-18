@@ -1,6 +1,7 @@
 import { apiClient, apiRequest } from "@/lib/api-client";
+import type { PaymentMethod } from "@/constants/system-constants";
 
-export type ExpensePaymentMethod = "CASH" | "CARD" | "BANK_TRANSFER" | "DIGITAL_WALLET" | "OTHER";
+export type ExpensePaymentMethod = PaymentMethod;
 export type ExpenseCategory = { id: string; name: string; isActive: boolean };
 export type ExpenseRecord = {
   id: string;

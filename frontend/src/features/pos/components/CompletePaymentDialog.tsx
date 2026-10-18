@@ -7,9 +7,10 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { FormField, FormSelectField } from "@/components/FormFields";
 import type { PosOrderRecord, PosPaymentInput, PosPaymentLineInput } from "@/features/pos/api/posApi";
 import { formatMoney } from "@/lib/formatMoney";
+import { PAYMENT_METHOD_LABELS, PAYMENT_METHOD_VALUES, type PaymentMethod as SystemPaymentMethod } from "@/constants/system-constants";
 
 type PaymentLineDraft = { id: string; method: PosPaymentLineInput["method"]; amount: string; tendered: string; reference: string };
-type PaymentMethod = PaymentLineDraft["method"];
+type PaymentMethod = SystemPaymentMethod;
 type PaymentAmountStatus = "due" | "neutral" | "applied" | "pending" | "settled" | "overpaid";
 type CompletePaymentDialogProps = {
   order: PosOrderRecord | null;
@@ -24,13 +25,7 @@ type CompletePaymentDialogProps = {
 
 const MAX_PAYMENT_LINES = 10;
 const PAYMENT_AMOUNT_FORMATTER = new Intl.NumberFormat("en", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const PAYMENT_METHOD_OPTIONS = [
-  { value: "CASH", label: "Cash" },
-  { value: "CARD", label: "Card" },
-  { value: "DIGITAL_WALLET", label: "Digital wallet" },
-  { value: "BANK_TRANSFER", label: "Bank transfer" },
-  { value: "OTHER", label: "Other" },
-] as const satisfies ReadonlyArray<{ value: PaymentMethod; label: string }>;
+const PAYMENT_METHOD_OPTIONS = PAYMENT_METHOD_VALUES.map((value) => ({ value, label: PAYMENT_METHOD_LABELS[value] })) satisfies ReadonlyArray<{ value: PaymentMethod; label: string }>;
 const PAYMENT_AMOUNT_STATUS_STYLES: Record<PaymentAmountStatus, string> = {
   due: "border-sky-500/25 bg-sky-500/5 text-sky-900 dark:text-sky-100",
   neutral: "border-border bg-muted/30 text-foreground",
@@ -49,7 +44,7 @@ function formatExactMoney(amount: number, currency: string) {
 }
 
 function isPaymentMethod(value: string): value is PaymentMethod {
-  return PAYMENT_METHOD_OPTIONS.some((option) => option.value === value);
+  return PAYMENT_METHOD_VALUES.some((method) => method === value);
 }
 
 export function CompletePaymentDialog({ order, currency, open, pending, error, requireReference, onClose, onSubmit }: CompletePaymentDialogProps) {

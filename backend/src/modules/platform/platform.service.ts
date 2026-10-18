@@ -1,8 +1,9 @@
 import { env } from "@config/env.js";
 import { HttpError } from "@lib/http-error.js";
 import { prisma } from "@lib/prisma.js";
+import type { PlatformRole } from "../../constants/system-constants.js";
 
-export type PlatformRole = "SUPER_ADMIN" | "SUPPORT_AGENT";
+export type { PlatformRole } from "../../constants/system-constants.js";
 
 export async function getPlatformRole(userId: string): Promise<PlatformRole | null> {
   const user = await prisma.user.findFirst({

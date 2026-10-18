@@ -1,17 +1,15 @@
 import { apiClient, apiRequest } from "@/lib/api-client";
+import type { ApiRequestBody, ApiResponseData } from "@/types/api-contract";
 
-export type MenuCategory = { id: string; name: string; sortOrder: number; isActive: boolean };
-export type MenuProduct = {
-  id: string;
-  name: string;
-  categoryId: string | null;
-  category?: { id: string; name: string } | null;
-  description: string | null;
-  sku: string | null;
-  price: number | string;
-  isAvailable: boolean;
-  modifierGroups?: { group: { id: string; name: string; minSelect: number; maxSelect: number; isActive: boolean; options: { id: string; name: string; priceDelta: number | string; isDefault: boolean; isActive: boolean; recipeEffects: { ingredientId: string; quantityDelta: number | string; ingredient: { id: string; name: string; unit: string } }[] }[] } }[];
-};
+type CategoriesResponse = ApiResponseData<"/tenants/{tenantId}/categories", "get">;
+type ProductsResponse = ApiResponseData<"/tenants/{tenantId}/products", "get">;
+type CreateProductResponse = ApiResponseData<"/tenants/{tenantId}/products", "post">;
+type UpdateProductResponse = ApiResponseData<"/tenants/{tenantId}/products/{id}", "patch">;
+export type MenuCategory = CategoriesResponse extends { categories: (infer Category)[] } ? Category : never;
+export type MenuProduct = ProductsResponse extends { products: (infer Product)[] } ? Product : never;
+export type MenuProductWriteResult = (CreateProductResponse extends { product: infer Product } ? Product : never) | (UpdateProductResponse extends { product: infer Product } ? Product : never);
+export type MenuProductInput = ApiRequestBody<"/tenants/{tenantId}/products", "post">;
+export type MenuProductUpdate = ApiRequestBody<"/tenants/{tenantId}/products/{id}", "patch">;
 
 export type ModifierEffectInput = { ingredientId: string; quantityDelta: number };
 export type ModifierOptionInput = {
@@ -60,4 +58,16 @@ export async function getMenuCategories(tenantId: string): Promise<MenuCategory[
 export async function getMenuProducts(tenantId: string): Promise<MenuProduct[]> {
   const result = await apiRequest<{ products: MenuProduct[] }>(apiClient.get(`/tenants/${tenantId}/products`));
   return result.products;
+}
+
+export async function saveMenuProduct(tenantId: string, input: MenuProductInput | MenuProductUpdate, id?: string): Promise<MenuProductWriteResult> {
+  const request = id
+    ? apiClient.patch(`/tenants/${tenantId}/products/${id}`, input)
+    : apiClient.post(`/tenants/${tenantId}/products`, input);
+  const result = await apiRequest<{ product: MenuProductWriteResult }>(request);
+  return result.product;
+}
+
+export async function deleteMenuProduct(tenantId: string, id: string): Promise<void> {
+  await apiRequest(apiClient.delete(`/tenants/${tenantId}/products/${id}`));
 }

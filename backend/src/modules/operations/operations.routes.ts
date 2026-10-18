@@ -4,9 +4,10 @@ import { prisma } from "@lib/prisma.js";
 import { HttpError } from "@lib/http-error.js";
 import { sendSuccess } from "@lib/response.js";
 import { requireAuth } from "@middleware/auth.js";
-import { Prisma, type BusinessRole } from "../../../prisma/generated/client/client.js";
+import { Prisma } from "../../../prisma/generated/client/client.js";
 import { createTeamInvitation } from "@modules/tenancy/team-invitation.service.js";
 import { businessDateKey, localBusinessDateRange } from "@lib/business-time.js";
+import { BUSINESS_ROLE_VALUES, MEASURE_UNIT_VALUES, PAYMENT_METHOD_VALUES, STOCK_ADJUSTMENT_TYPE_VALUES, type BusinessRole } from "../../constants/system-constants.js";
 
 const uuid = z.string().uuid();
 const nonEmptyName = z.string().trim().min(2).max(160);
@@ -14,11 +15,11 @@ const categorySchema = z.object({ name: nonEmptyName, sortOrder: z.number().int(
 const productSchema = z.object({ name: nonEmptyName, categoryId: uuid.nullable().optional(), description: z.string().trim().max(1000).nullable().optional(), sku: z.string().trim().max(80).nullable().optional(), price: z.number().min(0).max(100_000_000), isAvailable: z.boolean().default(true) });
 const modifierOptionSchema = z.object({ id: uuid.optional(), name: z.string().trim().min(1).max(120), priceDelta: z.number().min(-100_000_000).max(100_000_000).default(0), isDefault: z.boolean().default(false), isActive: z.boolean().default(true), sortOrder: z.number().int().min(0).default(0), effects: z.array(z.object({ ingredientId: uuid, quantityDelta: z.number().finite() })).max(100).default([]) }).superRefine((option, context) => { if (new Set(option.effects.map((effect) => effect.ingredientId)).size !== option.effects.length) context.addIssue({ code: "custom", path: ["effects"], message: "An ingredient can only have one effect per option." }); });
 const modifierGroupSchema = z.object({ name: z.string().trim().min(1).max(120), minSelect: z.number().int().min(0).max(20).default(0), maxSelect: z.number().int().min(1).max(20).default(1), sortOrder: z.number().int().min(0).default(0), isActive: z.boolean().default(true), options: z.array(modifierOptionSchema).min(1).max(100) }).superRefine((group, context) => { if (group.maxSelect < group.minSelect) context.addIssue({ code: "custom", path: ["maxSelect"], message: "Maximum selections cannot be less than minimum selections." }); if (new Set(group.options.map((option) => option.name.toLowerCase())).size !== group.options.length) context.addIssue({ code: "custom", path: ["options"], message: "Option names must be unique within a group." }); });
-const ingredientSchema = z.object({ name: nonEmptyName, unit: z.enum(["EACH", "GRAM", "KILOGRAM", "MILLILITER", "LITER", "OUNCE", "POUND"]), unitCost: z.number().min(0).max(100_000_000).nullable().optional(), isActive: z.boolean().optional() });
+const ingredientSchema = z.object({ name: nonEmptyName, unit: z.enum(MEASURE_UNIT_VALUES), unitCost: z.number().min(0).max(100_000_000).nullable().optional(), isActive: z.boolean().optional() });
 const supplierSchema = z.object({ name: nonEmptyName, email: z.email().nullable().optional(), phone: z.string().trim().max(40).nullable().optional(), address: z.string().trim().max(500).nullable().optional(), isActive: z.boolean().optional() });
 const expenseCategorySchema = z.object({ name: z.string().trim().min(2).max(100), isActive: z.boolean().optional() });
-const expenseSchema = z.object({ branchId: uuid, categoryId: uuid, amount: z.number().positive().max(100_000_000), expenseDate: z.iso.date(), description: z.string().trim().min(2).max(1000), paymentMethod: z.enum(["CASH", "CARD", "BANK_TRANSFER", "DIGITAL_WALLET", "OTHER"]), reference: z.string().trim().max(120).nullable().optional() });
-const purchaseSchema = z.object({ branchId: uuid, supplierId: uuid, reference: z.string().trim().max(80).nullable().optional(), notes: z.string().trim().max(1000).nullable().optional(), items: z.array(z.object({ ingredientId: uuid, quantity: z.number().positive().max(999_999_999.999), unit: z.enum(["EACH", "GRAM", "KILOGRAM", "MILLILITER", "LITER", "OUNCE", "POUND"]).default("EACH"), unitFactor: z.number().positive().max(999_999_999.999).default(1), unitCost: z.number().min(0).max(100_000_000) })).min(1).max(100) }).superRefine(({ items }, context) => {
+const expenseSchema = z.object({ branchId: uuid, categoryId: uuid, amount: z.number().positive().max(100_000_000), expenseDate: z.iso.date(), description: z.string().trim().min(2).max(1000), paymentMethod: z.enum(PAYMENT_METHOD_VALUES), reference: z.string().trim().max(120).nullable().optional() });
+const purchaseSchema = z.object({ branchId: uuid, supplierId: uuid, reference: z.string().trim().max(80).nullable().optional(), notes: z.string().trim().max(1000).nullable().optional(), items: z.array(z.object({ ingredientId: uuid, quantity: z.number().positive().max(999_999_999.999), unit: z.enum(MEASURE_UNIT_VALUES).default("EACH"), unitFactor: z.number().positive().max(999_999_999.999).default(1), unitCost: z.number().min(0).max(100_000_000) })).min(1).max(100) }).superRefine(({ items }, context) => {
   if (new Set(items.map((item) => item.ingredientId)).size !== items.length) context.addIssue({ code: "custom", path: ["items"], message: "Combine duplicate ingredients into one purchase line." });
 });
 const recipeSchema = z.object({ productId: uuid, notes: z.string().trim().max(1000).nullable().optional(), ingredients: z.array(z.object({ ingredientId: uuid, quantity: z.number().positive() })).min(1).max(100) });
@@ -184,7 +185,7 @@ operationsRouter.get("/:tenantId/team/invitations", async (request, response) =>
 });
 operationsRouter.post("/:tenantId/team/invitations", async (request, response) => {
   const { tenantId, userId } = params(request); const actorId = getUserId(userId); const scope = await tenantScope(actorId, tenantId, ownerManager);
-  const input = z.object({ email: z.email().transform((email) => email.toLowerCase()), role: z.enum(["OWNER", "MANAGER", "CASHIER", "WAITER", "KITCHEN_STAFF", "INVENTORY_MANAGER"]), branchIds: z.array(uuid).min(1).max(100) }).parse(request.body);
+  const input = z.object({ email: z.email().transform((email) => email.toLowerCase()), role: z.enum(BUSINESS_ROLE_VALUES), branchIds: z.array(uuid).min(1).max(100) }).parse(request.body);
   if (scope.role === "MANAGER" && ["OWNER", "MANAGER"].includes(input.role)) throw new HttpError(403, "ROLE_FORBIDDEN", "Managers cannot invite Owners or other Managers.");
   if (scope.role === "MANAGER" && input.branchIds.some((id) => !scope.branchIds.includes(id))) throw new HttpError(403, "BRANCH_ACCESS_DENIED", "You can only invite staff to your branches.");
   const invitation = await createTeamInvitation({ tenantId, invitedById: actorId, ...input });
@@ -205,7 +206,7 @@ operationsRouter.delete("/:tenantId/team/invitations/:invitationId", async (requ
 operationsRouter.patch("/:tenantId/team/:membershipId", async (request, response) => {
   const { tenantId, userId } = params(request); const actorId = getUserId(userId); const scope = await tenantScope(actorId, tenantId, ownerManager);
   const membershipId = uuid.parse(request.params.membershipId);
-  const input = z.object({ role: z.enum(["OWNER", "MANAGER", "CASHIER", "WAITER", "KITCHEN_STAFF", "INVENTORY_MANAGER"]).optional(), branchIds: z.array(uuid).min(1).max(100).optional() }).refine((body) => body.role !== undefined || body.branchIds !== undefined).parse(request.body);
+  const input = z.object({ role: z.enum(BUSINESS_ROLE_VALUES).optional(), branchIds: z.array(uuid).min(1).max(100).optional() }).refine((body) => body.role !== undefined || body.branchIds !== undefined).parse(request.body);
   const target = await prisma.membership.findFirst({ where: { id: membershipId, tenantId }, select: { id: true, userId: true, role: true, branchAssignments: { select: { branchId: true } } } });
   if (!target) throw new HttpError(404, "MEMBERSHIP_NOT_FOUND", "Team member not found.");
   if (target.userId === actorId && input.role) throw new HttpError(409, "SELF_ROLE_CHANGE_FORBIDDEN", "You cannot change your own business role.");
@@ -275,6 +276,7 @@ operationsRouter.get("/:tenantId/products", async (request, response) => {
     where: { tenantId },
     include: {
       category: { select: { id: true, name: true } },
+      recipe: { include: { ingredients: { select: { ingredientId: true, quantity: true } } } },
       modifierGroups: {
         orderBy: { sortOrder: "asc" },
         include: {
@@ -626,10 +628,10 @@ operationsRouter.post("/:tenantId/orders/:id/complete", async (request, response
   const branch = await branchAccess(tenantId, order.branchId, scope);
 
   const payment = z.object({
-    method: z.enum(["CASH", "CARD", "BANK_TRANSFER", "DIGITAL_WALLET", "OTHER"]).default("CASH"),
+    method: z.enum(PAYMENT_METHOD_VALUES).default("CASH"),
     cashReceived: cashAmount.optional(),
     reference: z.string().trim().max(120).optional(),
-    payments: z.array(z.object({ method: z.enum(["CASH", "CARD", "BANK_TRANSFER", "DIGITAL_WALLET", "OTHER"]), amount: cashAmount, tendered: cashAmount.optional(), reference: z.string().trim().max(120).optional() })).max(10).optional(),
+    payments: z.array(z.object({ method: z.enum(PAYMENT_METHOD_VALUES), amount: cashAmount, tendered: cashAmount.optional(), reference: z.string().trim().max(120).optional() })).max(10).optional(),
   }).parse(request.body ?? {});
   const completed = await prisma.$transaction(async (tx) => {
     const current = await tx.salesOrder.findFirst({
@@ -887,7 +889,7 @@ operationsRouter.post("/:tenantId/inventory/adjustments", async (request, respon
     ingredientId: uuid,
     quantity: z.number().finite().refine((value) => value !== 0),
     reorderLevel: z.number().min(0).optional(),
-    type: z.enum(["WASTE", "ADJUSTMENT"]),
+    type: z.enum(STOCK_ADJUSTMENT_TYPE_VALUES),
     note: z.string().trim().max(500).optional(),
   }).parse(request.body);
   await branchAccess(tenantId, input.branchId, scope);
@@ -1395,7 +1397,7 @@ operationsRouter.patch("/:tenantId/kitchen/items/:id", async (request, response)
   const { tenantId, userId } = params(request); const actorId = getUserId(userId);
   const scope = await tenantScope(actorId, tenantId, ["OWNER", "MANAGER", "KITCHEN_STAFF"]);
   const id = uuid.parse(request.params.id);
-  const input = z.object({ status: z.enum(["PREPARING", "READY", "NEW"]), reason: z.string().trim().min(3).max(300).optional() }).parse(request.body);
+  const input = z.object({ status: z.enum(["PREPARING", "READY", "NEW"] as const), reason: z.string().trim().min(3).max(300).optional() }).parse(request.body);
   if (input.status !== "NEW" && scope.role !== "OWNER" && scope.role !== "KITCHEN_STAFF") throw new HttpError(403, "KITCHEN_UPDATE_FORBIDDEN", "Only Kitchen Staff can advance kitchen items.");
   if (input.status === "NEW" && (!(["OWNER", "MANAGER"] as BusinessRole[]).includes(scope.role) || !input.reason)) throw new HttpError(403, "KITCHEN_RESET_FORBIDDEN", "Only a manager can reset an item, and a reason is required.");
   const item = await prisma.$transaction(async (tx) => {

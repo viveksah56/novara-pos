@@ -1,4 +1,5 @@
 import { apiClient, apiRequest } from "@/lib/api-client";
+import type { StocktakeStatus } from "@/constants/system-constants";
 
 export type StocktakeLine = {
   id: string;
@@ -14,7 +15,7 @@ export type StocktakeLine = {
 export type StocktakeRecord = {
   id: string;
   branchId: string;
-  status: "DRAFT" | "SUBMITTED" | "APPROVED" | "CANCELLED";
+  status: StocktakeStatus;
   startedAt: string;
   submittedAt: string | null;
   approvedAt: string | null;

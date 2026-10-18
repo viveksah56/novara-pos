@@ -1,0 +1,50 @@
+{
+  "enums": {
+    "BusinessRole": ["OWNER", "MANAGER", "CASHIER", "WAITER", "KITCHEN_STAFF", "INVENTORY_MANAGER"],
+    "PlatformRole": ["SUPER_ADMIN", "SUPPORT_AGENT"],
+    "TenantStatus": ["ACTIVE", "SUSPENDED"],
+    "SubscriptionStatus": ["TRIALING", "ACTIVE", "PENDING_PAYMENT", "PAST_DUE", "CANCELED", "EXPIRED"],
+    "MeasureUnit": ["EACH", "GRAM", "KILOGRAM", "MILLILITER", "LITER", "OUNCE", "POUND"],
+    "PaymentMethod": ["CASH", "CARD", "BANK_TRANSFER", "DIGITAL_WALLET", "OTHER"],
+    "PurchaseStatus": ["DRAFT", "ORDERED", "PARTIALLY_RECEIVED", "RECEIVED", "CANCELLED"],
+    "StocktakeStatus": ["DRAFT", "SUBMITTED", "APPROVED", "CANCELLED"],
+    "StockMovementType": ["PURCHASE_RECEIVED", "WASTE", "ADJUSTMENT", "RECIPE_USAGE", "REFUND_RESTOCK", "STOCKTAKE"],
+    "SalesOrderStatus": ["OPEN", "COMPLETED", "PARTIALLY_REFUNDED", "REFUNDED", "CANCELLED"],
+    "KitchenOrderStatus": ["PENDING", "PREPARING", "READY"],
+    "KitchenItemStatus": ["NEW", "PREPARING", "READY", "SERVED"],
+    "ShiftStatus": ["OPEN", "CLOSED"],
+    "CashMovementType": ["PAY_IN", "PAY_OUT"],
+    "PlatformTicketType": ["COMPLAINT", "FEEDBACK", "SUPPORT"],
+    "PlatformTicketStatus": ["OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED"],
+    "PlatformTicketPriority": ["LOW", "NORMAL", "HIGH", "URGENT"]
+  },
+  "choiceSets": {
+    "StockAdjustmentType": ["WASTE", "ADJUSTMENT"],
+    "KitchenItemTransitionStatus": ["NEW", "PREPARING", "READY"]
+  },
+  "capabilities": ["reports.sales.read", "reports.inventory.read", "reports.profit.read", "inventory.read", "inventory.adjust", "menu.read", "menu.manage", "staff.read", "expenses.read", "expenses.manage", "settings.read", "settings.manage", "orders.create", "orders.read", "orders.update", "orders.pay", "orders.refund", "receipts.print", "discounts.apply", "shifts.read", "shifts.review", "kitchen.orders.read", "kitchen.orders.update", "purchases.manage", "suppliers.manage", "subscription.manage", "audit.read"],
+  "roleCapabilities": {
+    "OWNER": ["reports.sales.read", "reports.inventory.read", "reports.profit.read", "inventory.read", "inventory.adjust", "menu.read", "menu.manage", "staff.read", "expenses.read", "expenses.manage", "settings.read", "settings.manage", "orders.create", "orders.read", "orders.update", "orders.pay", "orders.refund", "receipts.print", "discounts.apply", "shifts.read", "shifts.review", "kitchen.orders.read", "kitchen.orders.update", "purchases.manage", "suppliers.manage", "subscription.manage", "audit.read"],
+    "MANAGER": ["reports.sales.read", "reports.inventory.read", "inventory.read", "inventory.adjust", "menu.read", "menu.manage", "staff.read", "expenses.read", "expenses.manage", "settings.read", "orders.create", "orders.read", "orders.update", "orders.pay", "orders.refund", "receipts.print", "discounts.apply", "shifts.read", "shifts.review", "purchases.manage", "suppliers.manage"],
+    "CASHIER": ["menu.read", "orders.create", "orders.read", "orders.pay", "receipts.print", "discounts.apply", "shifts.read"],
+    "WAITER": ["menu.read", "orders.create", "orders.read", "orders.update"],
+    "KITCHEN_STAFF": ["kitchen.orders.read", "kitchen.orders.update"],
+    "INVENTORY_MANAGER": ["menu.read", "inventory.read", "inventory.adjust", "reports.inventory.read", "purchases.manage", "suppliers.manage"]
+  },
+  "presentation": {
+    "badges": {
+      "TenantStatus": { "ACTIVE": ["Active", "positive", "Business is active"], "SUSPENDED": ["Suspended", "danger", "Business access is suspended"] },
+      "SubscriptionStatus": { "TRIALING": ["Trialing", "info", "Subscription is in its trial period"], "ACTIVE": ["Active", "positive", "Subscription is active"], "PENDING_PAYMENT": ["Pending payment", "warning", "Payment is required"], "PAST_DUE": ["Past due", "danger", "Payment is overdue"], "CANCELED": ["Canceled", "neutral", "Subscription was canceled"], "EXPIRED": ["Expired", "neutral", "Subscription has expired"] },
+      "PurchaseStatus": { "DRAFT": ["Draft", "neutral", "Purchase has not been placed"], "ORDERED": ["Ordered", "info", "Purchase is awaiting delivery"], "PARTIALLY_RECEIVED": ["Partially received", "warning", "Some items are outstanding"], "RECEIVED": ["Received", "positive", "All items were received"], "CANCELLED": ["Cancelled", "neutral", "Purchase was cancelled"] },
+      "StocktakeStatus": { "DRAFT": ["Draft", "neutral", "Counts are still being entered"], "SUBMITTED": ["Submitted", "info", "Awaiting approval"], "APPROVED": ["Approved", "positive", "Stocktake was approved"], "CANCELLED": ["Cancelled", "neutral", "Stocktake was cancelled"] },
+      "SalesOrderStatus": { "OPEN": ["Open", "warning", "Order is still in progress"], "COMPLETED": ["Completed", "positive", "Order has been paid"], "PARTIALLY_REFUNDED": ["Partially refunded", "warning", "Part of the payment was refunded"], "REFUNDED": ["Refunded", "neutral", "Payment was refunded"], "CANCELLED": ["Cancelled", "danger", "Order was cancelled"] },
+      "KitchenOrderStatus": { "PENDING": ["Pending", "warning", "Order is waiting for kitchen work"], "PREPARING": ["Preparing", "info", "Kitchen is preparing this order"], "READY": ["Ready", "positive", "Order is ready to serve"] },
+      "KitchenItemStatus": { "NEW": ["New", "warning", "Item has not been started"], "PREPARING": ["Preparing", "info", "Item is being prepared"], "READY": ["Ready", "positive", "Item is ready"], "SERVED": ["Served", "neutral", "Item was served"] },
+      "ShiftStatus": { "OPEN": ["Open", "positive", "Cash drawer is open"], "CLOSED": ["Closed", "neutral", "Cash drawer is closed"] },
+      "PlatformTicketStatus": { "OPEN": ["Open", "warning", "Ticket needs attention"], "IN_PROGRESS": ["In progress", "info", "Ticket is being handled"], "RESOLVED": ["Resolved", "positive", "Ticket was resolved"], "CLOSED": ["Closed", "neutral", "Ticket is closed"] },
+      "PlatformTicketPriority": { "LOW": ["Low", "neutral", "Low priority"], "NORMAL": ["Normal", "info", "Standard priority"], "HIGH": ["High", "warning", "High priority"], "URGENT": ["Urgent", "danger", "Urgent priority"] }
+    },
+    "units": { "EACH": ["Each", "ea"], "GRAM": ["Gram", "g"], "KILOGRAM": ["Kilogram", "kg"], "MILLILITER": ["Milliliter", "ml"], "LITER": ["Liter", "l"], "OUNCE": ["Ounce", "oz"], "POUND": ["Pound", "lb"] },
+    "paymentMethods": { "CASH": "Cash", "CARD": "Card", "BANK_TRANSFER": "Bank transfer", "DIGITAL_WALLET": "Digital wallet", "OTHER": "Other" }
+  }
+}

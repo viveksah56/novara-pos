@@ -1,10 +1,11 @@
 import { apiClient, apiRequest } from "@/lib/api-client";
+import type { BusinessRole, KitchenItemStatus, SalesOrderStatus, PaymentMethod } from "@/constants/system-constants";
 import { createOrderSchema } from "@/features/pos/schemas/orderSchemas";
 
 export type PosCartLine = { productId: string; quantity: number; optionIds: string[]; note?: string };
-export type PosOrderStatus = "OPEN" | "COMPLETED" | "PARTIALLY_REFUNDED" | "REFUNDED" | "CANCELLED";
+export type PosOrderStatus = SalesOrderStatus;
 export type PosOrder = { id: string; status: PosOrderStatus; totalAmount: number | string };
-export type KitchenItemStatus = "NEW" | "PREPARING" | "READY" | "SERVED";
+export type { KitchenItemStatus } from "@/constants/system-constants";
 export type DiningTableRecord = { id: string; tenantId: string; branchId: string; name: string; section: string | null; seats: number; sortOrder: number; isActive: boolean; branch: { id: string; name: string }; status: "FREE" | "OCCUPIED" | "BILL_REQUESTED"; openOrder: { id: string; totalAmount: number | string; createdAt: string; guestCount: number | null; billRequestedAt: string | null; createdBy: { id: string; name: string } } | null };
 export type PosOrderRecord = PosOrder & {
   createdAt: string;
@@ -12,7 +13,7 @@ export type PosOrderRecord = PosOrder & {
   branch: { id: string; name: string };
   table?: { id: string; name: string; section: string | null } | null;
   billRequestedAt?: string | null;
-  createdBy: { id: string; name: string; role?: "OWNER" | "MANAGER" | "CASHIER" | "WAITER" | "KITCHEN_STAFF" | "INVENTORY_MANAGER" | null };
+  createdBy: { id: string; name: string; role?: BusinessRole | null };
   payments?: { createdById: string; method: PosPaymentMethod; amount: number | string; createdAt: string }[];
   items: { id: string; quantity: number; unitPrice: number | string; lineTotal: number | string; note?: string | null; kitchenStatus?: KitchenItemStatus; sentToKitchenAt?: string | null; modifiers?: { id: string; groupName: string; optionName: string; priceDelta: number | string }[]; product: { id: string; name: string; sku: string | null } }[];
 };
@@ -61,7 +62,7 @@ export async function markOrderItemServed(tenantId: string, orderId: string, ite
   return apiRequest<{ item: { id: string; kitchenStatus: KitchenItemStatus } }>(apiClient.patch(`/tenants/${tenantId}/orders/${orderId}/items/${itemId}/served`, {}));
 }
 
-export type PosPaymentMethod = "CASH" | "CARD" | "BANK_TRANSFER" | "DIGITAL_WALLET" | "OTHER";
+export type PosPaymentMethod = PaymentMethod;
 export type PosPaymentLineInput = { method: PosPaymentMethod; amount: number; tendered?: number; reference?: string };
 export type PosPaymentInput = { method: PosPaymentMethod; cashReceived?: number; reference?: string; payments?: PosPaymentLineInput[] };
 
@@ -73,7 +74,7 @@ export async function completePosOrder(tenantId: string, orderId: string, paymen
 export type PosRefundInput = {
   reason: string;
   restock: boolean;
-  method: "CASH" | "CARD" | "OTHER";
+  method: Extract<PaymentMethod, "CASH" | "CARD" | "OTHER">;
   items: { orderItemId: string; quantity: number }[];
 };
 

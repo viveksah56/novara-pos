@@ -1,19 +1,22 @@
 "use client";
 
 import { useState } from "react";
-import { Minus, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { QuantityControl } from "@/components/shared/QuantityControl";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { MenuProduct } from "@/features/menu/api/menuApi";
 import type { PosCartLine } from "@/features/pos/api/posApi";
 import { formatMoney } from "@/lib/formatMoney";
 
-export function ProductGrid({ products, cart, currency, disabled, onQuantityChange }: {
+export function ProductGrid({ products, cart, currency, disabled, onQuantityChange, layout = "grid", compact = false }: {
   products: MenuProduct[];
   cart: PosCartLine[];
   currency: string;
   disabled: boolean;
   onQuantityChange: (product: MenuProduct, delta: number, optionIds?: string[]) => void;
+  layout?: "grid" | "list";
+  compact?: boolean;
 }) {
   const [pendingProduct, setPendingProduct] = useState<MenuProduct | null>(null);
   const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
@@ -55,16 +58,16 @@ export function ProductGrid({ products, cart, currency, disabled, onQuantityChan
   }
 
   return <>
-    <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+    <div className={layout === "list" ? "divide-y divide-border/70 overflow-hidden rounded-xl border border-border bg-background" : "mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3"}>
       {products.map((product) => {
         const quantity = cart.filter((line) => line.productId === product.id).reduce((sum, line) => sum + line.quantity, 0);
         const activeModifierGroups = product.modifierGroups?.filter(({ group }) => group.isActive) ?? [];
         const hasModifiers = activeModifierGroups.length > 0;
-        return <article key={product.id} className="flex min-h-40 flex-col rounded-xl border border-border bg-background p-4">
-          <div className="flex items-start justify-between gap-3"><div className="min-w-0"><h3 className="truncate font-semibold">{product.name}</h3><p className="mt-1 text-xs text-muted-foreground">{product.category?.name ?? "Uncategorized"}</p></div><span className="shrink-0 text-sm font-semibold tabular-nums">{formatMoney(product.price, currency, 2)}</span></div>
-          {product.sku ? <p className="mt-2 text-[11px] text-muted-foreground">SKU · {product.sku}</p> : null}
-          {hasModifiers ? <p className="mt-1 text-[11px] text-muted-foreground">Customizable · {activeModifierGroups.length} groups</p> : null}
-          <div className="mt-auto flex items-center justify-between gap-2 pt-4"><span className="min-w-6 text-sm font-semibold tabular-nums" aria-live="polite">{quantity || ""}</span><div className="flex items-center gap-2"><Button type="button" size="icon" variant="outline" aria-label={`Remove one ${product.name}`} title={`Remove one ${product.name}`} disabled={quantity === 0 || disabled} onClick={() => onQuantityChange(product, -1)}><Minus aria-hidden /></Button><Button type="button" size="icon" aria-label={`Add ${product.name}`} title={`Add ${product.name}`} disabled={disabled} onClick={() => startProduct(product)}><Plus aria-hidden /></Button></div></div>
+        return <article key={product.id} className={layout === "list" ? "flex flex-wrap items-center gap-3 p-3 sm:flex-nowrap sm:gap-4 sm:px-4" : compact ? "flex min-h-32 flex-col rounded-xl border border-border/75 bg-background/60 p-3" : "flex min-h-40 flex-col rounded-xl border border-border bg-background p-4"}>
+          <div className={layout === "list" ? "flex w-full min-w-0 items-center justify-between gap-3 sm:w-auto sm:flex-1" : "flex items-start justify-between gap-3"}><div className="min-w-0"><h3 className="truncate font-semibold">{product.name}</h3><p className="mt-1 text-xs text-muted-foreground">{product.category?.name ?? "Uncategorized"}</p></div><span className="shrink-0 text-sm font-semibold tabular-nums">{formatMoney(product.price, currency, 2)}</span></div>
+          {product.sku && layout === "grid" ? <p className="mt-2 text-[11px] text-muted-foreground">SKU · {product.sku}</p> : null}
+          {hasModifiers ? <p className={layout === "list" ? "hidden text-[11px] text-muted-foreground md:block" : "mt-1 text-[11px] text-muted-foreground"}>Customizable · {activeModifierGroups.length} groups</p> : null}
+          <div className={layout === "list" ? "ml-auto" : "mt-auto flex items-center justify-between gap-2 pt-3"}><QuantityControl label={product.name} quantity={quantity} disabled={disabled} onDecrease={() => onQuantityChange(product, -1)} onIncrease={() => startProduct(product)} /></div>
         </article>;
       })}
     </div>

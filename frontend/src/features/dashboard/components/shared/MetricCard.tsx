@@ -7,17 +7,20 @@ export function MetricCard({
   note,
   icon: Icon,
   accent = false,
+  compact = false,
 }: {
   title: string;
   value: string;
   note: string;
   icon: LucideIcon;
   accent?: boolean;
+  compact?: boolean;
 }) {
   return (
     <article
       className={cn(
-        "group rounded-2xl border border-border/75 bg-card p-5 shadow-[0_8px_32px_-24px_rgba(14,42,31,.28)] transition-transform hover:-translate-y-0.5",
+        "group rounded-2xl border border-border/75 bg-card shadow-[0_8px_32px_-24px_rgba(14,42,31,.28)] transition-transform hover:-translate-y-0.5",
+        compact ? "p-4" : "p-5",
         accent && "bg-primary text-primary-foreground",
       )}
     >
@@ -32,19 +35,19 @@ export function MetricCard({
         </span>
         <span
           className={cn(
-            "grid size-10 place-items-center rounded-xl",
+            compact ? "grid size-9 place-items-center rounded-lg" : "grid size-10 place-items-center rounded-xl",
             accent ? "bg-white/10" : "bg-secondary text-primary",
           )}
         >
-          <Icon aria-hidden className="size-[18px]" />
+          <Icon aria-hidden className={compact ? "size-4" : "size-[18px]"} />
         </span>
       </div>
-      <div className="mt-5 text-3xl font-semibold tracking-[-.04em]">
+      <div className={cn("font-semibold tracking-[-.04em]", compact ? "mt-3 text-2xl" : "mt-5 text-3xl")}>
         {value}
       </div>
       <p
         className={cn(
-          "mt-1.5 text-xs",
+          compact ? "mt-1 text-[11px] leading-4" : "mt-1.5 text-xs",
           accent ? "text-primary-foreground/65" : "text-muted-foreground",
         )}
       >

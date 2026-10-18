@@ -9,6 +9,7 @@ import type { WorkspaceNavGroup } from "@/components/layout/WorkspaceSidebar";
 import { WorkspaceSearch } from "@/components/layout/WorkspaceSearch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SearchBar } from "@/components/shared/SearchBar";
 import { SelectField } from "@/components/ui/select";
 import { SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -117,7 +118,7 @@ export function StocktakeConsole() {
               <span className="shrink-0 rounded-full bg-secondary px-2.5 py-1 text-xs font-medium">{visibleStocktakes.length}</span>
             </div>
             <div className="mb-4 grid gap-2 sm:grid-cols-[minmax(0,1fr)_150px]">
-              <Input value={stocktakeSearch} onChange={(event) => setStocktakeSearch(event.target.value)} placeholder="Search branch, staff or status…" aria-label="Search stocktakes" />
+              <SearchBar value={stocktakeSearch} onValueChange={setStocktakeSearch} placeholder="Search branch, staff or status…" ariaLabel="Search stocktakes" />
               <SelectField aria-label="Filter stocktakes by status" value={stocktakeStatus} onValueChange={setStocktakeStatus} options={[{ value: "ALL", label: "All statuses" }, { value: "DRAFT", label: "Draft" }, { value: "SUBMITTED", label: "Submitted" }, { value: "APPROVED", label: "Approved" }, { value: "CANCELLED", label: "Cancelled" }]} />
             </div>
             {stocktakes.isPending ? <div className="h-32 animate-pulse rounded-xl bg-secondary" aria-busy="true" /> : stocktakes.isError ? <div role="alert" className="space-y-3 text-sm text-destructive"><p>{getErrorMessage(stocktakes.error)}</p><Button size="sm" variant="outline" onClick={() => void stocktakes.refetch()}>Retry</Button></div> : visibleStocktakes.length ? <div className="max-h-[32rem] space-y-2 overflow-y-auto pr-1">{visibleStocktakes.map((item) => <article key={item.id} className={`rounded-xl border p-3 transition ${stocktakeId === item.id ? "border-primary bg-primary/5" : "hover:bg-secondary/40"}`}><button type="button" onClick={() => setStocktakeId(item.id)} aria-pressed={stocktakeId === item.id} className="w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><span className="flex items-center justify-between gap-2"><strong className="text-sm">{item.status.replaceAll("_", " ")}</strong><span className="text-[10px] text-muted-foreground">{item._count?.lines ?? 0} lines</span></span><span className="mt-1 block text-xs text-muted-foreground">{item.branch?.name ?? "Branch"} · {formatDateTime(new Date(item.startedAt), "en", { dateStyle: "medium", timeStyle: "short" })}</span><span className="mt-1 block truncate text-xs text-muted-foreground">Started by {item.createdBy?.name ?? "Staff"}</span></button><div className="mt-3 flex justify-end border-t pt-2"><Button type="button" size="sm" variant={stocktakeId === item.id ? "secondary" : "outline"} onClick={() => setStocktakeId(item.id)}>{item.status === "DRAFT" ? "Continue count" : "Review count"}</Button></div></article>)}</div> : <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">{stocktakes.data?.length ? "No stocktakes match those filters." : "No stocktakes for this branch yet."}</p>}

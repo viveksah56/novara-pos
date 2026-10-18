@@ -12,13 +12,13 @@ import {
   type SortingState,
   type Updater,
 } from "@tanstack/react-table";
-import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, Download, Search, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
-import { SelectField } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import { SearchBar } from "@/components/shared/SearchBar";
+import { DataTablePagination } from "@/components/data-table/DataTablePagination";
 
 export type DataColumn<Row> = {
   id: string;
@@ -128,8 +128,8 @@ export function DataTable<Row>({
   return (
     <div className={cn("space-y-3", className)}>
       {enableSearch || (enableRowSelection && selectedRows.length > 0) ? (
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          {enableSearch ? <label className="relative block w-full sm:max-w-sm"><Search aria-hidden className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><Input value={globalFilter} onChange={(event) => setGlobalFilter(event.target.value)} placeholder={searchPlaceholder} aria-label={searchPlaceholder} className="pl-9 pr-10" />{globalFilter ? <button type="button" aria-label="Clear table search" onClick={() => setGlobalFilter("")} className="absolute right-2 top-1/2 grid size-7 -translate-y-1/2 place-items-center rounded-md text-muted-foreground hover:bg-muted"><X aria-hidden className="size-4" /></button> : null}</label> : <span />}
+        <div className={`flex flex-col gap-2 ${enableSearch ? "sm:flex-row sm:items-center sm:justify-between" : "items-start"}`}>
+          {enableSearch ? <SearchBar value={globalFilter} onValueChange={setGlobalFilter} placeholder={searchPlaceholder} ariaLabel={searchPlaceholder} className="sm:max-w-sm" /> : null}
           {enableRowSelection && selectedRows.length > 0 ? <div className="flex flex-wrap items-center gap-2" aria-live="polite"><span className="text-xs font-medium text-muted-foreground">{selectedRows.length} selected</span><Button type="button" variant="outline" size="sm" data-control-layout="standard" onClick={exportSelectedRows}><Download aria-hidden className="size-4" />Export selected</Button>{bulkActions?.(selectionContext)}<Button type="button" variant="ghost" size="sm" data-control-layout="standard" onClick={selectionContext.clearSelection}>Clear</Button></div> : null}
         </div>
       ) : null}
@@ -153,10 +153,16 @@ export function DataTable<Row>({
           </Table>
         </div>
 
-        <div className="flex flex-col gap-3 px-1 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-          <p>{table.getFilteredRowModel().rows.length} records · Page {table.getState().pagination.pageIndex + 1} of {pageCount}</p>
-          <div className="flex flex-wrap items-center gap-2"><label className="flex items-center gap-2">Rows <SelectField aria-label="Rows per page" value={String(table.getState().pagination.pageSize)} onValueChange={(value) => table.setPageSize(Number(value))} options={[10, 20, 50].map((size) => ({ value: String(size), label: String(size) }))} triggerClassName="h-9 min-w-20 rounded-lg px-3" /></label><Button type="button" variant="outline" size="icon" aria-label="Previous page" disabled={!table.getCanPreviousPage()} onClick={() => table.previousPage()}><ChevronLeft aria-hidden className="size-4" /></Button><Button type="button" variant="outline" size="icon" aria-label="Next page" disabled={!table.getCanNextPage()} onClick={() => table.nextPage()}><ChevronRight aria-hidden className="size-4" /></Button></div>
-        </div>
+        <DataTablePagination
+          totalItems={table.getFilteredRowModel().rows.length}
+          pageIndex={table.getState().pagination.pageIndex}
+          pageSize={table.getState().pagination.pageSize}
+          pageCount={pageCount}
+          canPreviousPage={table.getCanPreviousPage()}
+          canNextPage={table.getCanNextPage()}
+          onPageChange={(pageIndex) => table.setPageIndex(pageIndex)}
+          onPageSizeChange={(pageSize) => table.setPageSize(pageSize)}
+        />
       </>}
     </div>
   );

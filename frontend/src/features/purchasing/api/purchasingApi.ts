@@ -1,9 +1,10 @@
 import { apiClient, apiRequest } from "@/lib/api-client";
+import type { PurchaseStatus } from "@/constants/system-constants";
 
 export type Supplier = { id: string; name: string; isActive: boolean; email: string | null; phone: string | null };
 export type PurchaseOrder = {
   id: string;
-  status: "DRAFT" | "ORDERED" | "PARTIALLY_RECEIVED" | "RECEIVED" | "CANCELLED";
+  status: PurchaseStatus;
   totalAmount: number | string;
   supplier: { id: string; name: string };
   branch: { id: string; name: string };

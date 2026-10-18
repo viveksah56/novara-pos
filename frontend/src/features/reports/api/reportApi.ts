@@ -1,19 +1,14 @@
 import { apiClient, apiRequest } from "@/lib/api-client";
+import type { ApiQueryParams, ApiResponseData } from "@/types/api-contract";
+import type { PaymentMethod } from "@/constants/system-constants";
 
-export type SalesReport = {
-  range: { from: string; to: string };
-  currency: string;
-  summary: { orderCount: number; grossSales: number; netSales: number; refunds: number; refundCount?: number; expenses?: number; profit?: number; operatingProfitBeforeIncomeTax?: number; foodCostPercent?: number };
-  daily: { date: string; orders: number; sales: number }[];
-  bestSellers: { id: string; name: string; quantity: number; sales: number }[];
-  paymentBreakdown: { method: string; amount: number }[];
+type SalesReportContract = ApiResponseData<"/tenants/{tenantId}/reports/sales", "get">;
+export type SalesReport = Omit<SalesReportContract, "paymentBreakdown"> & {
+  paymentBreakdown: Array<{ method: PaymentMethod; amount: number }>;
 };
-export type InventoryReport = {
-  valuation: { total: string; currency: string };
-  lowStock: { id: string; quantity: string | number; reorderLevel: string | number; ingredient: { id: string; name: string; unit: string }; branch: { id: string; name: string } }[];
-  movements: { id: string; quantity: string | number; type: string; createdAt: string; ingredient: { name: string; unit: string }; branch: { name: string } }[];
-};
-export async function getSalesReport(tenantId: string, query: { branchId?: string; from?: string; to?: string }) {
+export type InventoryReport = ApiResponseData<"/tenants/{tenantId}/reports/inventory", "get">;
+export type SalesReportQuery = ApiQueryParams<"/tenants/{tenantId}/reports/sales", "get">;
+export async function getSalesReport(tenantId: string, query: SalesReportQuery) {
   return apiRequest<SalesReport>(apiClient.get(`/tenants/${tenantId}/reports/sales`, { params: query }));
 }
 export async function getInventoryReport(tenantId: string, branchId?: string) {

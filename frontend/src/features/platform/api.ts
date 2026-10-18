@@ -1,7 +1,8 @@
 import { apiClient, apiRequest, type ApiSuccess } from "@/lib/api-client";
+import type { PlatformRole, TenantStatus, SubscriptionStatus, PlatformTicketType, PlatformTicketStatus, PlatformTicketPriority } from "@/constants/system-constants";
 
-export type PlatformRole = "SUPER_ADMIN" | "SUPPORT_AGENT";
-export type BusinessStatus = "ACTIVE" | "SUSPENDED";
+export type { PlatformRole } from "@/constants/system-constants";
+export type BusinessStatus = TenantStatus;
 export type PlatformBusiness = {
   id: string; name: string; status: BusinessStatus; currency: string; planId: string | null;
   createdAt: string; plan: { id: string; name: string; priceMonthly: number | string; currency: string } | null;
@@ -30,8 +31,8 @@ export type PlatformHealth = {
   runtime: { nodeVersion: string; uptimeSeconds: number; environment: string };
   checkedAt: string;
 };
-export type PlatformTicket = { id: string; tenantId: string | null; type: "COMPLAINT" | "FEEDBACK" | "SUPPORT"; priority: "LOW" | "NORMAL" | "HIGH" | "URGENT"; status: "OPEN" | "IN_PROGRESS" | "RESOLVED" | "CLOSED"; subject: string; message: string; createdAt: string; updatedAt: string; tenant: { id: string; name: string } | null; createdBy: { id: string; name: string; email: string } };
-export type BusinessSubscription = { id: string; status: "TRIALING" | "ACTIVE" | "PENDING_PAYMENT" | "PAST_DUE" | "CANCELED" | "EXPIRED"; currentPeriodStart: string; currentPeriodEnd: string | null; trialEndsAt: string | null; plan: { id: string; name: string; priceMonthly: number | string; currency: string } };
+export type PlatformTicket = { id: string; tenantId: string | null; type: PlatformTicketType; priority: PlatformTicketPriority; status: PlatformTicketStatus; subject: string; message: string; createdAt: string; updatedAt: string; tenant: { id: string; name: string } | null; createdBy: { id: string; name: string; email: string } };
+export type BusinessSubscription = { id: string; status: SubscriptionStatus; currentPeriodStart: string; currentPeriodEnd: string | null; trialEndsAt: string | null; plan: { id: string; name: string; priceMonthly: number | string; currency: string } };
 
 async function request<T>(promise: Promise<{ data: ApiSuccess<T> }>): Promise<T> { return apiRequest<T>(promise); }
 const base = "/platform";

@@ -1,8 +1,6 @@
 "use client";
 
-import { AlertDialog as AlertDialogPrimitive } from "@base-ui/react/alert-dialog";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { ConfirmReasonModal } from "@/components/ui/confirm-reason-modal";
 
 export type ActionKind = "LOGOUT" | "DELETE_RECORD" | "DEACTIVATE_MEMBER" | "SUSPEND_BUSINESS" | "RESTORE_BUSINESS" | "BULK_SUSPEND_BUSINESSES" | "DELETE_PLAN" | "DEACTIVATE_PLAN" | "ACTIVATE_PLAN" | "REMOVE_SUPPORT_AGENT";
 export type ActionModel = { kind: ActionKind; subject: string; resourceId?: string; resourceIds?: string[] };
@@ -32,14 +30,17 @@ export function ActionDialog({ action, open, pending, onOpenChange, onConfirm, e
 }) {
   const copy = actionCopy(action);
   const destructive = action.kind === "DELETE_RECORD" || action.kind === "DEACTIVATE_MEMBER" || action.kind === "DELETE_PLAN" || action.kind === "LOGOUT" || action.kind === "REMOVE_SUPPORT_AGENT";
-  return <AlertDialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
-    <AlertDialogPrimitive.Portal>
-      <AlertDialogPrimitive.Backdrop className="fixed inset-0 z-[80] bg-black/45 backdrop-blur-[2px] transition-opacity data-[ending-style]:opacity-0 data-[starting-style]:opacity-0" />
-      <AlertDialogPrimitive.Popup className="fixed left-1/2 top-1/2 z-[81] flex max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 flex-col gap-5 overflow-y-auto rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-2xl outline-none data-[ending-style]:scale-[.98] data-[ending-style]:opacity-0 data-[starting-style]:scale-[.98] data-[starting-style]:opacity-0">
-        <div><AlertDialogPrimitive.Title className="text-lg font-semibold tracking-tight">{copy.title}</AlertDialogPrimitive.Title><AlertDialogPrimitive.Description className="mt-2 text-sm leading-6 text-muted-foreground">{copy.description}</AlertDialogPrimitive.Description></div>
-        {error ? <p role="alert" className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</p> : null}
-        <div className="flex flex-col-reverse justify-end gap-2 sm:flex-row"><AlertDialogPrimitive.Close render={<Button type="button" variant="outline" disabled={pending} />}>Cancel</AlertDialogPrimitive.Close><Button type="button" variant={destructive ? "destructive" : "default"} disabled={pending} onClick={onConfirm} className={cn("min-w-28")}>{pending ? "Working…" : copy.confirm}</Button></div>
-      </AlertDialogPrimitive.Popup>
-    </AlertDialogPrimitive.Portal>
-  </AlertDialogPrimitive.Root>;
+  return <ConfirmReasonModal
+    target={action}
+    open={open}
+    onOpenChange={onOpenChange}
+    onConfirm={() => onConfirm()}
+    title={copy.title}
+    description={copy.description}
+    confirmLabel={copy.confirm}
+    confirmVariant={destructive ? "destructive" : "default"}
+    requireReason={false}
+    pending={pending}
+    error={error}
+  />;
 }

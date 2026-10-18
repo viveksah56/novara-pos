@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { MEASURE_UNIT_VALUES } from "@/constants/system-constants";
 
 export const supplierFormSchema = z.object({
   name: z.string().trim().min(2).max(160),
@@ -16,7 +17,7 @@ export const purchaseOrderFormSchema = z.object({
   items: z.array(z.object({
     ingredientId: z.string().uuid(),
     quantity: z.coerce.number().positive(),
-    unit: z.enum(["EACH", "GRAM", "KILOGRAM", "MILLILITER", "LITER", "OUNCE", "POUND"]),
+    unit: z.enum(MEASURE_UNIT_VALUES),
     unitFactor: z.coerce.number().positive(),
     unitCost: z.coerce.number().min(0),
   })).min(1).max(100),

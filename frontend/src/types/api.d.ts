@@ -2254,6 +2254,749 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/tenants/{tenantId}/categories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List menu categories */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tenantId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Menu categories and product counts. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                categories: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    tenantId: string;
+                                    name: string;
+                                    sortOrder: number;
+                                    isActive: boolean;
+                                    /** Format: date-time */
+                                    createdAt: string;
+                                    /** Format: date-time */
+                                    updatedAt: string;
+                                    _count?: {
+                                        products: number;
+                                    };
+                                }[];
+                            };
+                            /** @enum {string} */
+                            status: "success";
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Create a menu category */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tenantId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        name: string;
+                        sortOrder?: number;
+                        isActive?: boolean;
+                    };
+                };
+            };
+            responses: {
+                /** @description Category created. */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                category: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    tenantId: string;
+                                    name: string;
+                                    sortOrder: number;
+                                    isActive: boolean;
+                                    /** Format: date-time */
+                                    createdAt: string;
+                                    /** Format: date-time */
+                                    updatedAt: string;
+                                };
+                            };
+                            /** @enum {string} */
+                            status: "success";
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tenants/{tenantId}/categories/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete a menu category */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tenantId: string;
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Category deleted. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                /** @enum {boolean} */
+                                deleted: true;
+                            };
+                            /** @enum {string} */
+                            status: "success";
+                        };
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        /** Update a menu category */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tenantId: string;
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        name?: string;
+                        sortOrder?: number;
+                        isActive?: boolean;
+                    };
+                };
+            };
+            responses: {
+                /** @description Category updated. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                category: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    tenantId: string;
+                                    name: string;
+                                    sortOrder: number;
+                                    isActive: boolean;
+                                    /** Format: date-time */
+                                    createdAt: string;
+                                    /** Format: date-time */
+                                    updatedAt: string;
+                                };
+                            };
+                            /** @enum {string} */
+                            status: "success";
+                        };
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/tenants/{tenantId}/products": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List menu products with recipe and modifier detail */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tenantId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Menu products. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                products: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    tenantId: string;
+                                    /** Format: uuid */
+                                    categoryId: string | null;
+                                    name: string;
+                                    description: string | null;
+                                    sku: string | null;
+                                    price: string | number;
+                                    isAvailable: boolean;
+                                    /** Format: date-time */
+                                    createdAt: string;
+                                    /** Format: date-time */
+                                    updatedAt: string;
+                                    category: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        name: string;
+                                    } | null;
+                                    recipe: {
+                                        ingredients: {
+                                            /** Format: uuid */
+                                            ingredientId: string;
+                                            quantity: string | number;
+                                        }[];
+                                    } | null;
+                                    modifierGroups: {
+                                        group: {
+                                            /** Format: uuid */
+                                            id: string;
+                                            /** Format: uuid */
+                                            tenantId: string;
+                                            name: string;
+                                            minSelect: number;
+                                            maxSelect: number;
+                                            sortOrder: number;
+                                            isActive: boolean;
+                                            /** Format: date-time */
+                                            createdAt: string;
+                                            /** Format: date-time */
+                                            updatedAt: string;
+                                            options: {
+                                                /** Format: uuid */
+                                                id: string;
+                                                /** Format: uuid */
+                                                groupId: string;
+                                                name: string;
+                                                priceDelta: string | number;
+                                                isDefault: boolean;
+                                                isActive: boolean;
+                                                sortOrder: number;
+                                                recipeEffects: {
+                                                    /** Format: uuid */
+                                                    id: string;
+                                                    /** Format: uuid */
+                                                    optionId: string;
+                                                    /** Format: uuid */
+                                                    ingredientId: string;
+                                                    quantityDelta: string | number;
+                                                    ingredient: {
+                                                        /** Format: uuid */
+                                                        id: string;
+                                                        name: string;
+                                                        /** @enum {string} */
+                                                        unit: "EACH" | "GRAM" | "KILOGRAM" | "MILLILITER" | "LITER" | "OUNCE" | "POUND";
+                                                        unitCost: string | number | unknown;
+                                                    };
+                                                }[];
+                                            }[];
+                                        };
+                                    }[];
+                                }[];
+                            };
+                            /** @enum {string} */
+                            status: "success";
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Create a menu product */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tenantId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        name: string;
+                        /** Format: uuid */
+                        categoryId?: string | null;
+                        description?: string | null;
+                        sku?: string | null;
+                        price: number;
+                        isAvailable?: boolean;
+                    };
+                };
+            };
+            responses: {
+                /** @description Product created. */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                product: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    tenantId: string;
+                                    /** Format: uuid */
+                                    categoryId: string | null;
+                                    name: string;
+                                    description: string | null;
+                                    sku: string | null;
+                                    price: string | number;
+                                    isAvailable: boolean;
+                                    /** Format: date-time */
+                                    createdAt: string;
+                                    /** Format: date-time */
+                                    updatedAt: string;
+                                };
+                            };
+                            /** @enum {string} */
+                            status: "success";
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tenants/{tenantId}/products/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete a menu product */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tenantId: string;
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Product deleted. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                id: string;
+                                /** @enum {boolean} */
+                                deleted: true;
+                            };
+                            /** @enum {string} */
+                            status: "success";
+                        };
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        /** Update a menu product */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tenantId: string;
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        name?: string;
+                        /** Format: uuid */
+                        categoryId?: string | null;
+                        description?: string | null;
+                        sku?: string | null;
+                        price?: number;
+                        isAvailable?: boolean;
+                    };
+                };
+            };
+            responses: {
+                /** @description Product updated. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                product: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    tenantId: string;
+                                    /** Format: uuid */
+                                    categoryId: string | null;
+                                    name: string;
+                                    description: string | null;
+                                    sku: string | null;
+                                    price: string | number;
+                                    isAvailable: boolean;
+                                    /** Format: date-time */
+                                    createdAt: string;
+                                    /** Format: date-time */
+                                    updatedAt: string;
+                                    category: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        /** Format: uuid */
+                                        tenantId: string;
+                                        name: string;
+                                        sortOrder: number;
+                                        isActive: boolean;
+                                        /** Format: date-time */
+                                        createdAt: string;
+                                        /** Format: date-time */
+                                        updatedAt: string;
+                                    } | null;
+                                };
+                            };
+                            /** @enum {string} */
+                            status: "success";
+                        };
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/tenants/{tenantId}/ingredients": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List inventory ingredients */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tenantId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Ingredients. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                ingredients: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    tenantId: string;
+                                    name: string;
+                                    /** @enum {string} */
+                                    unit: "EACH" | "GRAM" | "KILOGRAM" | "MILLILITER" | "LITER" | "OUNCE" | "POUND";
+                                    unitCost: string | number | unknown;
+                                    isActive: boolean;
+                                    /** Format: date-time */
+                                    createdAt: string;
+                                    /** Format: date-time */
+                                    updatedAt: string;
+                                }[];
+                            };
+                            /** @enum {string} */
+                            status: "success";
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tenants/{tenantId}/inventory": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read branch ingredient stock and recent movements */
+        get: {
+            parameters: {
+                query: {
+                    branchId: string;
+                };
+                header?: never;
+                path: {
+                    tenantId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Branch inventory and recent movement history. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                /** Format: uuid */
+                                branchId: string;
+                                stock: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    tenantId: string;
+                                    /** Format: uuid */
+                                    branchId: string;
+                                    /** Format: uuid */
+                                    ingredientId: string;
+                                    quantity: string | number;
+                                    averageCost: string | number;
+                                    reorderLevel: string | number;
+                                    /** Format: date-time */
+                                    updatedAt: string;
+                                    ingredient: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        name: string;
+                                        /** @enum {string} */
+                                        unit: "EACH" | "GRAM" | "KILOGRAM" | "MILLILITER" | "LITER" | "OUNCE" | "POUND";
+                                    };
+                                }[];
+                                movements: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    tenantId: string;
+                                    /** Format: uuid */
+                                    branchId: string;
+                                    /** Format: uuid */
+                                    ingredientId: string;
+                                    /** Format: uuid */
+                                    purchaseId: string | null;
+                                    /** Format: uuid */
+                                    salesOrderId: string | null;
+                                    /** Format: uuid */
+                                    stocktakeId: string | null;
+                                    type: string;
+                                    quantity: string | number;
+                                    note: string | null;
+                                    /** Format: uuid */
+                                    createdById: string;
+                                    /** Format: date-time */
+                                    createdAt: string;
+                                    ingredient: {
+                                        name: string;
+                                        /** @enum {string} */
+                                        unit: "EACH" | "GRAM" | "KILOGRAM" | "MILLILITER" | "LITER" | "OUNCE" | "POUND";
+                                    };
+                                }[];
+                            };
+                            /** @enum {string} */
+                            status: "success";
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tenants/{tenantId}/inventory/adjustments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record an auditable stock adjustment or waste movement */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tenantId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        branchId: string;
+                        /** Format: uuid */
+                        ingredientId: string;
+                        quantity: number;
+                        reorderLevel?: number;
+                        /** @enum {string} */
+                        type: "WASTE" | "ADJUSTMENT";
+                        note?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Stock updated and movement recorded. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: {
+                                stock: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    tenantId: string;
+                                    /** Format: uuid */
+                                    branchId: string;
+                                    /** Format: uuid */
+                                    ingredientId: string;
+                                    quantity: string | number;
+                                    averageCost: string | number;
+                                    reorderLevel: string | number;
+                                    /** Format: date-time */
+                                    updatedAt: string;
+                                };
+                            };
+                            /** @enum {string} */
+                            status: "success";
+                        };
+                    };
+                };
+                /** @description The movement would make available stock negative. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            data: unknown;
+                            /** @enum {string} */
+                            status: "error";
+                            error: {
+                                code: string;
+                                message: string;
+                                details?: {
+                                    [key: string]: string[];
+                                };
+                                requestId?: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/tenants/{tenantId}/orders": {
         parameters: {
             query?: never;
@@ -4064,15 +4807,37 @@ export interface paths {
                         "application/json": {
                             data: {
                                 range: {
-                                    /** Format: date-time */
                                     from: string;
-                                    /** Format: date-time */
                                     to: string;
                                 };
                                 currency: string;
-                                summary?: unknown;
-                                daily: unknown[];
-                                bestSellers: unknown[];
+                                summary: {
+                                    orderCount: number;
+                                    grossSales: number;
+                                    netSales: number;
+                                    refunds: number;
+                                    refundCount: number;
+                                    expenses?: number;
+                                    profit?: number;
+                                    operatingProfitBeforeIncomeTax?: number;
+                                    foodCostPercent?: number;
+                                };
+                                daily: {
+                                    date: string;
+                                    orders: number;
+                                    sales: number;
+                                }[];
+                                bestSellers: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    name: string;
+                                    quantity: number;
+                                    sales: number;
+                                }[];
+                                paymentBreakdown: {
+                                    method: string;
+                                    amount: number;
+                                }[];
                             };
                             /** @enum {string} */
                             status: "success";
@@ -4139,8 +4904,64 @@ export interface paths {
                     content: {
                         "application/json": {
                             data: {
-                                lowStock: unknown[];
-                                movements: unknown[];
+                                lowStock: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    tenantId: string;
+                                    /** Format: uuid */
+                                    branchId: string;
+                                    /** Format: uuid */
+                                    ingredientId: string;
+                                    quantity: string | number;
+                                    averageCost: string | number;
+                                    reorderLevel: string | number;
+                                    /** Format: date-time */
+                                    updatedAt: string;
+                                    ingredient: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        name: string;
+                                        /** @enum {string} */
+                                        unit: "EACH" | "GRAM" | "KILOGRAM" | "MILLILITER" | "LITER" | "OUNCE" | "POUND";
+                                    };
+                                    branch: {
+                                        /** Format: uuid */
+                                        id: string;
+                                        name: string;
+                                    };
+                                }[];
+                                movements: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    tenantId: string;
+                                    /** Format: uuid */
+                                    branchId: string;
+                                    /** Format: uuid */
+                                    ingredientId: string;
+                                    /** Format: uuid */
+                                    purchaseId: string | null;
+                                    /** Format: uuid */
+                                    salesOrderId: string | null;
+                                    /** Format: uuid */
+                                    stocktakeId: string | null;
+                                    type: string;
+                                    quantity: string | number;
+                                    note: string | null;
+                                    /** Format: uuid */
+                                    createdById: string;
+                                    /** Format: date-time */
+                                    createdAt: string;
+                                    ingredient: {
+                                        name: string;
+                                        /** @enum {string} */
+                                        unit: "EACH" | "GRAM" | "KILOGRAM" | "MILLILITER" | "LITER" | "OUNCE" | "POUND";
+                                    };
+                                    branch: {
+                                        name: string;
+                                    };
+                                }[];
                                 valuation: {
                                     total: string;
                                     currency: string;
