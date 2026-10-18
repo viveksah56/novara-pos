@@ -44,7 +44,7 @@ function renderBackend() {
   lines.push(`export const CAPABILITIES = ${JSON.stringify(config.capabilities)} as const;`);
   lines.push("export type Capability = (typeof CAPABILITIES)[number];");
   lines.push(`export const BUSINESS_ROLE_CAPABILITIES = ${JSON.stringify(config.roleCapabilities, null, 2)} as const satisfies Record<BusinessRole, readonly Capability[]>;`);
-  return `${lines.join("\n")}\n`;
+  return `${lines.join("\n").trimEnd()}\n`;
 }
 
 function renderFrontend() {
@@ -81,7 +81,7 @@ function renderFrontend() {
   lines.push("export const PAYMENT_METHOD_LABELS = {");
   for (const [method, label] of Object.entries(config.presentation.paymentMethods)) lines.push(`  ${method}: ${quote(label)},`);
   lines.push("} as const satisfies Record<PaymentMethod, string>;", "");
-  return `${lines.join("\n")}\n`;
+  return `${lines.join("\n").trimEnd()}\n`;
 }
 
 async function syncPrismaEnums() {
