@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: novara-backend
+    runtime: node
+    plan: free
+    region: singapore
+    rootDir: backend
+    branch: main
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeployTrigger: commit
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: TRUST_PROXY
+        value: "1"
+      - key: APP_ORIGIN
+        value: https://novara-pos.vercel.app
+      - key: CORS_ORIGIN
+        value: https://novara-pos.vercel.app,https://novara-pos-git-main-git-bibeks-projects.vercel.app
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
