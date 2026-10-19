@@ -36,6 +36,9 @@ export function createApp() {
       next(error);
     }
   });
+  app.get("/", (_request, response) => response.status(200).json(
+      { data: { status: "ok", message: "Welcome to CafeOS" }, status: "success" })
+  );
   app.use("/api/v1", apiRouter);
   app.use((request, response) => {
     response.status(404).json(errorEnvelope("NOT_FOUND", "The requested endpoint was not found.", request.id));
