@@ -1,8 +1,11 @@
 import type { NextConfig } from "next";
-import { getApiOrigin } from "./src/lib/api-origin";
+import { getApiOrigin } from "@/lib/api-origin";
 
 const nextConfig: NextConfig = {
   /* config options here */
+  experimental: {
+    agentFeedback: true,
+  },
   cacheComponents: true,
   partialPrefetching: true,
   async rewrites() {
