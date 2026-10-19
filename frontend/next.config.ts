@@ -10,6 +10,7 @@ const nextConfig: NextConfig = {
   partialPrefetching: true,
   async rewrites() {
     const backendUrl = getApiOrigin();
+    console.log("Backend URL from next.config.ts:", backendUrl);
     return [{ source: "/api/:path*", destination: `${backendUrl}/api/:path*` }];
   },
 };
