@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { capabilityForPath, roleHasCapability, type BusinessRole, type PlatformRole } from "@/lib/rbac";
+import { getApiOrigin } from "@/lib/api-origin";
 
 /**
  * These checks are an optimistic navigation guard. The API still authorizes every
  * request and applies tenant/branch scope before returning protected data.
  */
-const API_ORIGIN = (process.env.API_PROXY_TARGET ?? "http://localhost:8000").replace(/\/$/, "");
+const API_ORIGIN = getApiOrigin();
 const ACCESS_COOKIE_NAMES = ["novara_access", "accessToken"] as const;
 
 type Profile = {

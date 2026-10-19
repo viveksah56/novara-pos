@@ -1,11 +1,12 @@
 import type { NextConfig } from "next";
+import { getApiOrigin } from "./src/lib/api-origin";
 
 const nextConfig: NextConfig = {
   /* config options here */
   cacheComponents: true,
   partialPrefetching: true,
   async rewrites() {
-    const backendUrl = process.env.API_PROXY_TARGET ?? "http://localhost:8000";
+    const backendUrl = getApiOrigin();
     return [{ source: "/api/:path*", destination: `${backendUrl}/api/:path*` }];
   },
 };
